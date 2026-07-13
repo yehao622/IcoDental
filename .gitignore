@@ -1,6 +1,33 @@
+# Build artifacts
+/build/
+/cmake-build-*/
+/build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+build.ninja
+.ninja_deps
+.ninja_log
+
+# Qt Creator / IDE
+*.user
+*.user.*
+*.autosave
+.idea/
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Secrets / env
 .env
-.env.local
+.env.*
 config/secrets*
-*.key
 *.pem
+*.key
 credentials.json
