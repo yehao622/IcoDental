@@ -11,7 +11,6 @@
 #include "ImageFingerprint.hpp"
 
 namespace icodental::domain {
-
 class CaseRecord {
     public:
         [[nodiscard]] const ImageFingerprint& fingerprint() const;
