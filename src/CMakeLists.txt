@@ -8,6 +8,9 @@ set(ICODENTAL_SOURCES
     infrastructure/config/AppConfig.cpp
     infrastructure/config/SettingsRepository.cpp
     infrastructure/config/SecretResolver.cpp
+    infrastructure/filesystem/SupportedImageTypes.cpp
+    infrastructure/filesystem/FileScanner.cpp
+    infrastructure/filesystem/ImageHasher.cpp
 )
 
 add_library(icodental_core STATIC ${ICODENTAL_SOURCES})
