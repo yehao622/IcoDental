@@ -10,3 +10,17 @@ target_link_libraries(icodental_filesystem_tests
 )
 
 add_test(NAME icodental_filesystem_tests COMMAND icodental_filesystem_tests)
+
+add_executable(icodental_cache_tests
+    cache/CacheRepositoryTests.cpp
+)
+
+target_link_libraries(icodental_cache_tests
+    PRIVATE
+        icodental_core
+        Qt6::Core
+        Qt6::Sql
+        Qt6::Test
+)
+
+add_test(NAME icodental_cache_tests COMMAND icodental_cache_tests)
