@@ -4,6 +4,10 @@ set(ICODENTAL_SOURCES
     domain/ImageFingerprint.cpp
     domain/AnalysisResult.cpp
     domain/CaseRecord.cpp
+    application/AnalysisRequest.cpp
+    application/AnalysisItem.cpp
+    application/AnalysisPlan.cpp
+    application/AnalysisOrchestrator.cpp
     infrastructure/config/ModelCatalog.cpp
     infrastructure/config/AppConfig.cpp
     infrastructure/config/SettingsRepository.cpp
@@ -14,7 +18,6 @@ set(ICODENTAL_SOURCES
     infrastructure/cache/AnalysisCacheEntry.cpp
     infrastructure/cache/CacheDatabase.cpp
     infrastructure/cache/AnalysisCacheRepository.cpp
-
 )
 
 add_library(icodental_core STATIC ${ICODENTAL_SOURCES})
