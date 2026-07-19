@@ -18,6 +18,11 @@ set(ICODENTAL_SOURCES
     infrastructure/cache/AnalysisCacheEntry.cpp
     infrastructure/cache/CacheDatabase.cpp
     infrastructure/cache/AnalysisCacheRepository.cpp
+    infrastructure/providers/ProviderRequest.cpp
+    infrastructure/providers/ProviderResponse.cpp
+    infrastructure/providers/GeminiClient.cpp
+    infrastructure/providers/GeminiPayloadBuilder.cpp
+    infrastructure/providers/GeminiResponseParser.cpp
 )
 
 add_library(icodental_core STATIC ${ICODENTAL_SOURCES})
@@ -26,6 +31,7 @@ target_link_libraries(icodental_core
     PUBLIC 
         Qt6::Core
         Qt6::Sql
+        Qt6::Network
 )
 
 target_include_directories(icodental_core

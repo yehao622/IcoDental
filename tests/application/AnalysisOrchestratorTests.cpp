@@ -134,7 +134,7 @@ void AnalysisOrchestratorTests::buildPlan_explicitFilesWithCacheMiss_returnsPend
             QString(),
             {filePath},
             domain::ProviderType::Gemini,
-            "gemini-1.5-pro",
+            "gemini-2.5-flash",
             false);
 
         const auto plan = orchestrator.buildPlan(request);
@@ -180,7 +180,7 @@ void AnalysisOrchestratorTests::buildPlan_explicitFilesWithCacheHit_returnsCache
         const cache::AnalysisCacheEntry entry(
             fingerprint,
             domain::ProviderType::Gemini,
-            "gemini-1.5-pro",
+            "gemini-2.5-flash",
             "cached summary",
             now,
             now);
@@ -195,7 +195,7 @@ void AnalysisOrchestratorTests::buildPlan_explicitFilesWithCacheHit_returnsCache
             QString(),
             {filePath},
             domain::ProviderType::Gemini,
-            "gemini-1.5-pro",
+            "gemini-2.5-flash",
             false);
 
         const auto plan = orchestrator.buildPlan(request);
@@ -206,7 +206,7 @@ void AnalysisOrchestratorTests::buildPlan_explicitFilesWithCacheHit_returnsCache
         QCOMPARE(plan.cachedItems().first().filePath(), filePath);
         QVERIFY(plan.cachedItems().first().hasCachedEntry());
         QVERIFY(plan.cachedItems().first().cachedEntry().has_value());
-        QCOMPARE(plan.cachedItems().first().cachedEntry()->model(), QString("gemini-1.5-pro"));
+        QCOMPARE(plan.cachedItems().first().cachedEntry()->model(), QString("gemini-2.5-flash"));
     }
 
     cleanupConnection(connectionName);
@@ -242,7 +242,7 @@ void AnalysisOrchestratorTests::buildPlan_forceRefresh_bypassesCache() {
         const cache::AnalysisCacheEntry entry(
             fingerprint,
             domain::ProviderType::Gemini,
-            "gemini-1.5-pro",
+            "gemini-2.5-flash",
             "cached summary",
             now,
             now);
@@ -256,7 +256,7 @@ void AnalysisOrchestratorTests::buildPlan_forceRefresh_bypassesCache() {
             QString(),
             {filePath},
             domain::ProviderType::Gemini,
-            "gemini-1.5-pro",
+            "gemini-2.5-flash",
             true);
 
         const auto plan = orchestrator.buildPlan(request);
