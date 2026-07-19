@@ -77,3 +77,16 @@ target_link_libraries(icodental_gemini_parser_tests
 )
 
 add_test(NAME icodental_gemini_parser_tests COMMAND icodental_gemini_parser_tests)
+
+add_executable(icodental_gemini_client_tests
+    providers/GeminiClientTests.cpp
+)
+
+target_link_libraries(icodental_gemini_client_tests
+    PRIVATE
+        icodental_core
+        Qt6::Core
+        Qt6::Test
+)
+
+add_test(NAME icodental_gemini_client_tests COMMAND icodental_gemini_client_tests)

@@ -23,6 +23,7 @@ set(ICODENTAL_SOURCES
     infrastructure/providers/GeminiClient.cpp
     infrastructure/providers/GeminiPayloadBuilder.cpp
     infrastructure/providers/GeminiResponseParser.cpp
+    infrastructure/providers/QtNetworkExecutor.cpp
 )
 
 add_library(icodental_core STATIC ${ICODENTAL_SOURCES})
