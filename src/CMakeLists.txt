@@ -38,3 +38,5 @@ target_link_libraries(icodental_core
 target_include_directories(icodental_core
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+enable_coverage_for_target(icodental_core)

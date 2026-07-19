@@ -9,6 +9,7 @@ target_link_libraries(icodental_filesystem_tests
         Qt6::Test
 )
 
+enable_coverage_for_target(icodental_filesystem_tests)
 add_test(NAME icodental_filesystem_tests COMMAND icodental_filesystem_tests)
 
 add_executable(icodental_cache_tests
@@ -23,6 +24,7 @@ target_link_libraries(icodental_cache_tests
         Qt6::Test
 )
 
+enable_coverage_for_target(icodental_cache_tests)
 add_test(NAME icodental_cache_tests COMMAND icodental_cache_tests)
 
 add_executable(icodental_application_tests
@@ -37,6 +39,7 @@ target_link_libraries(icodental_application_tests
         Qt6::Test
 )
 
+enable_coverage_for_target(icodental_application_tests)
 add_test(NAME icodental_application_tests COMMAND icodental_application_tests)
 
 add_executable(icodental_provider_tests
@@ -50,6 +53,7 @@ target_link_libraries(icodental_provider_tests
         Qt6::Test
 )
 
+enable_coverage_for_target(icodental_provider_tests)
 add_test(NAME icodental_provider_tests COMMAND icodental_provider_tests)
 
 add_executable(icodental_gemini_payload_tests
@@ -63,6 +67,7 @@ target_link_libraries(icodental_gemini_payload_tests
         Qt6::Test
 )
 
+enable_coverage_for_target(icodental_gemini_payload_tests)
 add_test(NAME icodental_gemini_payload_tests COMMAND icodental_gemini_payload_tests)
 
 add_executable(icodental_gemini_parser_tests
@@ -76,6 +81,7 @@ target_link_libraries(icodental_gemini_parser_tests
         Qt6::Test
 )
 
+enable_coverage_for_target(icodental_gemini_parser_tests)
 add_test(NAME icodental_gemini_parser_tests COMMAND icodental_gemini_parser_tests)
 
 add_executable(icodental_gemini_client_tests
@@ -89,4 +95,5 @@ target_link_libraries(icodental_gemini_client_tests
         Qt6::Test
 )
 
+enable_coverage_for_target(icodental_gemini_client_tests)
 add_test(NAME icodental_gemini_client_tests COMMAND icodental_gemini_client_tests)
