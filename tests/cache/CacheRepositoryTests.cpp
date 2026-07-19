@@ -138,7 +138,7 @@ void CacheRepositoryTests::repository_saveAndFindByFingerprint_roundTripsEntry()
         const auto entry = makeEntry(
             QString(64, 'b'),
             domain::ProviderType::Gemini,
-            "gemini-1.5-pro",
+            "gemini-2.5-flash",
             "cached analysis result",
             now,
             now);
@@ -151,7 +151,7 @@ void CacheRepositoryTests::repository_saveAndFindByFingerprint_roundTripsEntry()
         QVERIFY(found->isValid());
         QCOMPARE(found->fingerprint().sha256(), entry.fingerprint().sha256());
         QVERIFY(found->provider() == domain::ProviderType::Gemini);
-        QCOMPARE(found->model(), QString("gemini-1.5-pro"));
+        QCOMPARE(found->model(), QString("gemini-2.5-flash"));
         QCOMPARE(found->summaryText(), QString("cached analysis result"));
     }
 
