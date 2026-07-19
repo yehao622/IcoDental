@@ -1,33 +1,26 @@
 #include "infrastructure/providers/GeminiClient.hpp"
 
-#include <QEventLoop>
 #include <QFile>
-#include <QJsonDocument>
-#include <QNetworkReply>
-#include <QNetworkRequest>
+#include <QJsonObject>
 #include <QUrl>
+#include <utility>
 
 #include "domain/ProviderType.hpp"
 #include "infrastructure/providers/GeminiPayloadBuilder.hpp"
 #include "infrastructure/providers/GeminiResponseParser.hpp"
+#include "infrastructure/providers/QtNetworkExecutor.hpp"
 
 namespace icodental::infrastructure::providers {
-    GeminiClient::GeminiClient(QString apiKey, QNetworkAccessManager* networkAccessManager)
+    GeminiClient::GeminiClient(QString apiKey)
         : m_apiKey(std::move(apiKey))
-        , m_networkAccessManager(networkAccessManager)
-        , m_ownsNetworkAccessManager(networkAccessManager == nullptr)
-    {
-        if (m_ownsNetworkAccessManager) {
-            m_networkAccessManager = new QNetworkAccessManager();
-        }
-    }
+        , m_ownedNetworkExecutor(std::make_unique<QtNetworkExecutor>())
+        , m_networkExecutor(m_ownedNetworkExecutor.get())
+    {}
 
-    GeminiClient::~GeminiClient() {
-        if (m_ownsNetworkAccessManager) {
-            delete m_networkAccessManager;
-            m_networkAccessManager = nullptr;
-        }
-    }
+    GeminiClient::GeminiClient(QString apiKey, INetworkExecutor* networkExecutor)
+        : m_apiKey(std::move(apiKey))
+        , m_networkExecutor(networkExecutor)
+    {}
 
     ProviderResponse GeminiClient::analyze(const ProviderRequest& request) {
         if (!request.isValid()) {
@@ -42,6 +35,10 @@ namespace icodental::infrastructure::providers {
             return buildErrorResponse("Gemini API key is empty.");
         }
 
+        if (m_networkExecutor == nullptr) {
+            return buildErrorResponse("Gemini network executor is not configured.");
+        }
+
         QFile imageFile(request.imagePath());
         if (!imageFile.open(QIODevice::ReadOnly)) {
             return buildErrorResponse(QString("Failed to open image file: %1").arg(request.imagePath()));
@@ -52,36 +49,23 @@ namespace icodental::infrastructure::providers {
         GeminiPayloadBuilder payloadBuilder;
         const QJsonObject payload = payloadBuilder.build(request, imageBytes);
 
-        const QString endpoint =
-            QString("https://generativelanguage.googleapis.com/v1beta/models/%1:generateContent?key=%2")
-                .arg(request.model(), m_apiKey);
+        const NetworkResult result = m_networkExecutor->postJson(QUrl(buildEndpoint(request.model())), payload);
 
-        QNetworkRequest networkRequest{QUrl(endpoint)};
-        networkRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-        QNetworkReply* reply =
-            m_networkAccessManager->post(networkRequest, QJsonDocument(payload).toJson());
-
-        QEventLoop loop;
-        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        loop.exec();
-
-        const QByteArray responseBytes = reply->readAll();
-
-        if (reply->error() != QNetworkReply::NoError) {
-            const QString errorMessage = reply->errorString();
-            const QString rawResponse = QString::fromUtf8(responseBytes);
-            reply->deleteLater();
-            return ProviderResponse(false, QString(), rawResponse, errorMessage);
+        if (!result.success) {
+            return ProviderResponse(false, QString(), QString::fromUtf8(result.responseBody), result.errorMessage);
         }
 
-        reply->deleteLater();
-
-        GeminiResponseParser responseParser;
-        return responseParser.parse(responseBytes);
+        GeminiResponseParser parser;
+        return parser.parse(result.responseBody);
     }
 
     ProviderResponse GeminiClient::buildErrorResponse(const QString& message) const {
         return ProviderResponse(false, QString(), QString(), message);
+    }
+
+    QString GeminiClient::buildEndpoint(const QString& model) const {
+        return QString(
+            "https://generativelanguage.googleapis.com/v1beta/models/%1:generateContent?key=%2")
+            .arg(model, m_apiKey);
     }
 }
