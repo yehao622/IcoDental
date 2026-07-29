@@ -4,6 +4,7 @@ set(ICODENTAL_SOURCES
     domain/ImageFingerprint.cpp
     domain/AnalysisResult.cpp
     domain/CaseRecord.cpp
+    domain/CaseAnalysisResult.cpp
     application/AnalysisRequest.cpp
     application/AnalysisItem.cpp
     application/AnalysisPlan.cpp
