@@ -11,10 +11,11 @@ class QPushButton;
 namespace icodental::ui {
     class ImagePreviewPane;
     class ResultEditorPane;
+    class MainViewModel;
 
     class MainWindow final : public QMainWindow {
     public:
-        explicit MainWindow(QWidget* parent = nullptr);
+        explicit MainWindow(MainViewModel& viewModel, QWidget* parent = nullptr);
 
     private:
         void openImage();
@@ -36,6 +37,7 @@ namespace icodental::ui {
         QLineEdit* m_optionalPromptLineEdit{nullptr};
         QLabel* m_statusLabel{nullptr};
 
+        MainViewModel& m_viewModel;
         QString m_selectedImagePath;
     };
 }

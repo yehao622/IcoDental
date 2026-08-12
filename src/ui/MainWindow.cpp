@@ -18,10 +18,14 @@
 #include "domain/CaseAnalysisResult.hpp"
 #include "ui/widgets/ImagePreviewPane.hpp"
 #include "ui/widgets/ResultEditorPane.hpp"
+#include "ui/viewmodels/MainViewModel.hpp"
 
 namespace icodental::ui {
-    MainWindow::MainWindow(QWidget* parent)
+    MainWindow::MainWindow(
+        MainViewModel& viewModel,
+        QWidget* parent)
         : QMainWindow(parent)
+        , m_viewModel(viewModel)
     {
         setWindowTitle("IcoDental");
         resize(1440, 900);
@@ -183,6 +187,40 @@ namespace icodental::ui {
                 "Select an image first",
                 "Choose a prescription image before starting analysis.");
             return;
+        }
+
+        const auto outcome = m_viewModel.analyzeSingleImage(
+            m_selectedImagePath,
+            m_providerComboBox->currentText(),
+            m_modelComboBox->currentText().trimmed(),
+            m_forceRefreshCheckBox->isChecked());
+
+        switch (outcome.status) {
+            case MainViewModel::AnalyzeStatus::CacheHit:
+                m_resultEditorPane->displayResult(
+                    outcome.caseAnalysisResult.value());
+                m_statusLabel->setText(outcome.message);
+                return;
+
+            case MainViewModel::AnalyzeStatus::ProviderAnalysisRequired:
+                m_statusLabel->setText(outcome.message);
+
+                QMessageBox::information(
+                    this,
+                    "Provider analysis required",
+                    outcome.message
+                        + "\n\n"
+                          "Gemini analysis will be connected in the next implementation step.");
+                return;
+
+            case MainViewModel::AnalyzeStatus::Error:
+                m_statusLabel->setText("Analysis planning failed.");
+
+                QMessageBox::warning(
+                    this,
+                    "Unable to prepare analysis",
+                    outcome.message);
+                return;
         }
 
         showDemoResult();
