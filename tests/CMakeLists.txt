@@ -112,3 +112,18 @@ target_link_libraries(icodental_case_analysis_result_tests
 enable_coverage_for_target(icodental_case_analysis_result_tests)
 
 add_test(NAME icodental_case_analysis_result_tests COMMAND icodental_case_analysis_result_tests)
+
+add_executable(icodental_case_analysis_result_parser_tests
+    providers/CaseAnalysisResultParserTests.cpp
+)
+
+target_link_libraries(icodental_case_analysis_result_parser_tests
+    PRIVATE
+        icodental_core
+        Qt6::Core
+        Qt6::Test
+)
+
+enable_coverage_for_target(icodental_case_analysis_result_parser_tests)
+
+add_test(NAME icodental_case_analysis_result_parser_tests COMMAND icodental_case_analysis_result_parser_tests)

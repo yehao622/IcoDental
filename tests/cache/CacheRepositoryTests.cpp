@@ -6,6 +6,7 @@
 
 #include "domain/ImageFingerprint.hpp"
 #include "domain/ProviderType.hpp"
+#include "domain/CaseAnalysisResult.hpp"
 #include "infrastructure/cache/AnalysisCacheEntry.hpp"
 #include "infrastructure/cache/AnalysisCacheRepository.hpp"
 #include "infrastructure/cache/CacheDatabase.hpp"
@@ -29,6 +30,7 @@ class CacheRepositoryTests : public QObject {
             domain::ProviderType provider,
             const QString& model,
             const QString& summary,
+            const domain::CaseAnalysisResult& caseAnalysisResult,
             const QDateTime& createdAt,
             const QDateTime& updatedAt);
 
@@ -44,6 +46,7 @@ cache::AnalysisCacheEntry CacheRepositoryTests::makeEntry(
     domain::ProviderType provider,
     const QString& model,
     const QString& summary,
+    const domain::CaseAnalysisResult& caseAnalysisResult,
     const QDateTime& createdAt,
     const QDateTime& updatedAt) {
     return cache::AnalysisCacheEntry(
@@ -51,6 +54,7 @@ cache::AnalysisCacheEntry CacheRepositoryTests::makeEntry(
         provider,
         model,
         summary,
+        caseAnalysisResult,
         createdAt,
         updatedAt);
 }
@@ -124,6 +128,16 @@ void CacheRepositoryTests::repository_saveAndFindByFingerprint_roundTripsEntry()
 
     const QString dbPath = makeDbPath(tempDir, "cache_roundtrip.sqlite");
     const QDateTime now = QDateTime::currentDateTimeUtc();
+    const domain::CaseAnalysisResult caseResult(
+        "Dr. Smith",
+        "Main Office",
+        "John Doe",
+        "Crown",
+        "36",
+        "A2",
+        "Handle gently",
+        "High confidence",
+        "raw provider text");
 
     QString connectionName;
     {
@@ -140,6 +154,7 @@ void CacheRepositoryTests::repository_saveAndFindByFingerprint_roundTripsEntry()
             domain::ProviderType::Gemini,
             "gemini-2.5-flash",
             "cached analysis result",
+            caseResult,
             now,
             now);
 
@@ -153,6 +168,7 @@ void CacheRepositoryTests::repository_saveAndFindByFingerprint_roundTripsEntry()
         QVERIFY(found->provider() == domain::ProviderType::Gemini);
         QCOMPARE(found->model(), QString("gemini-2.5-flash"));
         QCOMPARE(found->summaryText(), QString("cached analysis result"));
+        QCOMPARE(found->caseAnalysisResult(), entry.caseAnalysisResult());
     }
 
     cleanupConnection(connectionName);
@@ -166,6 +182,26 @@ void CacheRepositoryTests::repository_save_updatesExistingFingerprint() {
     const QDateTime createdAt = QDateTime::currentDateTimeUtc();
     const QDateTime updatedAt = createdAt.addSecs(60);
     const QString fingerprint = QString(64, 'c');
+    const domain::CaseAnalysisResult firstResult(
+        "Dr. A",
+        "Office A",
+        "Patient A",
+        "Type A",
+        "11",
+        "A1",
+        "First instructions",
+        "Medium confidence",
+        "raw provider A");
+    const domain::CaseAnalysisResult secondResult(
+        "Dr. B",
+        "Office B",
+        "Patient B",
+        "Type B",
+        "22",
+        "B2",
+        "Second instructions",
+        "High confidence",
+        "raw provider B");
 
     QString connectionName;
     {
@@ -183,6 +219,7 @@ void CacheRepositoryTests::repository_save_updatesExistingFingerprint() {
             domain::ProviderType::Gemini,
             "gemini-2.5-flash",
             "first summary",
+            firstResult,
             createdAt,
             createdAt);
 
@@ -191,6 +228,7 @@ void CacheRepositoryTests::repository_save_updatesExistingFingerprint() {
             domain::ProviderType::Ollama,
             "llava",
             "updated summary",
+            secondResult,
             createdAt,
             updatedAt);
 
@@ -206,6 +244,7 @@ void CacheRepositoryTests::repository_save_updatesExistingFingerprint() {
                  createdAt.toUTC().toString(Qt::ISODate));
         QCOMPARE(found->updatedAtUtc().toUTC().toString(Qt::ISODate),
                  updatedAt.toUTC().toString(Qt::ISODate));
+        QCOMPARE(found->caseAnalysisResult(), secondResult);
     }
 
     cleanupConnection(connectionName);
