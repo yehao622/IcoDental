@@ -45,7 +45,7 @@ namespace icodental::infrastructure::providers {
             return ProviderResponse(false, QString(), rawResponse, "Case analysis result was invalid.");
         }
 
-        return ProviderResponse(true, result.rawProviderText(), rawResponse, QString());
+        return ProviderResponse(true, result.rawProviderText(), rawResponse, QString(), result);
     }
 
     CaseAnalysisResult CaseAnalysisResultParser::parseResultObject(

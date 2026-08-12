@@ -46,9 +46,24 @@ void CaseAnalysisResultParserTests::parse_returnsSummaryText_onValidStructuredGe
     const auto response = parser.parse(responseBytes);
 
     QVERIFY(response.success());
+
+    QVERIFY(response.hasCaseAnalysisResult());
+    QVERIFY(response.caseAnalysisResult().has_value());
+
     QVERIFY(response.isValid());
     QCOMPARE(response.summaryText(), QString("Please refabricate crown on tooth #4."));
     QVERIFY(response.errorMessage().isEmpty());
+
+    const auto& result = response.caseAnalysisResult().value();
+    QCOMPARE(result.doctorName(), QString("Dr. Kim"));
+    QCOMPARE(result.officeName(), QString("Onion Dental"));
+    QCOMPARE(result.patientName(), QString("Mumen Sarwa"));
+    QCOMPARE(result.caseType(), QString("Crown"));
+    QCOMPARE(result.toothNumber(), QString("#4"));
+    QCOMPARE(result.shade(), QString("A2"));
+    QCOMPARE(result.specialInstructions(), QString("Please refabricate crown on tooth #4."));
+    QCOMPARE(result.confidenceNote(), QString("Handwriting mostly legible."));
+    QCOMPARE(result.rawProviderText(), QString("Please refabricate crown on tooth #4."));
 }
 
 void CaseAnalysisResultParserTests::parse_returnsError_onInvalidEnvelopeJson() {
@@ -139,6 +154,12 @@ void CaseAnalysisResultParserTests::parse_usesStructuredText_whenRawProviderText
     QVERIFY(response.isValid());
     QVERIFY(response.summaryText().contains(QString("\"doctorName\":\"Dr. Kim\"")));
     QVERIFY(response.errorMessage().isEmpty());
+    QVERIFY(response.hasCaseAnalysisResult());
+    QVERIFY(response.caseAnalysisResult().has_value());
+
+    const auto& result = response.caseAnalysisResult().value();
+    QCOMPARE(result.doctorName(), QString("Dr. Kim"));
+    QCOMPARE(result.rawProviderText(), response.summaryText());
 }
 
 QTEST_APPLESS_MAIN(CaseAnalysisResultParserTests)
