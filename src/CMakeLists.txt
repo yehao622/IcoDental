@@ -25,6 +25,7 @@ set(ICODENTAL_SOURCES
     infrastructure/providers/GeminiPayloadBuilder.cpp
     infrastructure/providers/GeminiResponseParser.cpp
     infrastructure/providers/QtNetworkExecutor.cpp
+    infrastructure/providers/CaseAnalysisResultParser.cpp
 )
 
 add_library(icodental_core STATIC ${ICODENTAL_SOURCES})
@@ -41,3 +42,16 @@ target_include_directories(icodental_core
 )
 
 enable_coverage_for_target(icodental_core)
+
+add_executable(icodental_app
+    main.cpp
+    ui/MainWindow.cpp
+    ui/widgets/ImagePreviewPane.cpp
+    ui/widgets/ResultEditorPane.cpp
+)
+
+target_link_libraries(icodental_app
+    PRIVATE
+        icodental_core
+        Qt6::Widgets
+)

@@ -4,11 +4,14 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QVariant>
+#include <QJsonDocument>
+#include <utility>
 
 namespace icodental::infrastructure::cache {
 
     using icodental::domain::ImageFingerprint;
     using icodental::domain::ProviderType;
+    using icodental::domain::CaseAnalysisResult;
 
     AnalysisCacheRepository::AnalysisCacheRepository(QSqlDatabase database)
         : m_database(std::move(database))
@@ -16,30 +19,36 @@ namespace icodental::infrastructure::cache {
 
     std::optional<AnalysisCacheEntry> AnalysisCacheRepository::findByFingerprint(
         const ImageFingerprint& fingerprint) const {
-        if (!fingerprint.isValid() || !m_database.isOpen()) {
-            return std::nullopt;
+            if (!fingerprint.isValid() || !m_database.isOpen()) {
+                return std::nullopt;
+            }
+
+            QSqlQuery query(m_database);
+            query.prepare(R"(
+                SELECT fingerprint, provider, model, summary_text, case_analysis_result_json, created_at_utc, updated_at_utc
+                FROM analysis_cache
+                WHERE fingerprint = :fingerprint
+            )");
+            query.bindValue(":fingerprint", fingerprint.sha256());
+
+            if (!query.exec() || !query.next()) {
+                return std::nullopt;
+            }
+
+            const QString caseAnalysisJsonString = query.value(4).toString();
+            const QJsonDocument caseAnalysisDoc = QJsonDocument::fromJson(caseAnalysisJsonString.toUtf8());
+            const auto caseAnalysisResult = CaseAnalysisResult::fromJson(caseAnalysisDoc.object());
+
+            return AnalysisCacheEntry(
+                ImageFingerprint(query.value(0).toString()),
+                providerFromString(query.value(1).toString()),
+                query.value(2).toString(),
+                query.value(3).toString(),
+                caseAnalysisResult,
+                QDateTime::fromString(query.value(5).toString(), Qt::ISODate),
+                QDateTime::fromString(query.value(6).toString(), Qt::ISODate)
+            );
         }
-
-        QSqlQuery query(m_database);
-        query.prepare(R"(
-            SELECT fingerprint, provider, model, summary_text, created_at_utc, updated_at_utc
-            FROM analysis_cache
-            WHERE fingerprint = :fingerprint
-        )");
-        query.bindValue(":fingerprint", fingerprint.sha256());
-
-        if (!query.exec() || !query.next()) {
-            return std::nullopt;
-        }
-
-        return AnalysisCacheEntry(
-            ImageFingerprint(query.value(0).toString()),
-            providerFromString(query.value(1).toString()),
-            query.value(2).toString(),
-            query.value(3).toString(),
-            QDateTime::fromString(query.value(4).toString(), Qt::ISODate),
-            QDateTime::fromString(query.value(5).toString(), Qt::ISODate));
-    }
 
     bool AnalysisCacheRepository::save(const AnalysisCacheEntry& entry) {
         if (!entry.isValid() || !m_database.isOpen()) {
@@ -50,21 +59,25 @@ namespace icodental::infrastructure::cache {
         QSqlQuery query(m_database);
         query.prepare(R"(
             INSERT INTO analysis_cache (
-                fingerprint, provider, model, summary_text, created_at_utc, updated_at_utc
+                fingerprint, provider, model, summary_text, case_analysis_result_json, created_at_utc, updated_at_utc
             ) VALUES (
-                :fingerprint, :provider, :model, :summary_text, :created_at_utc, :updated_at_utc
+                :fingerprint, :provider, :model, :summary_text, :case_analysis_result_json, :created_at_utc, :updated_at_utc
             )
             ON CONFLICT(fingerprint) DO UPDATE SET
                 provider = excluded.provider,
                 model = excluded.model,
                 summary_text = excluded.summary_text,
+                case_analysis_result_json = excluded.case_analysis_result_json,
                 updated_at_utc = excluded.updated_at_utc
         )");
+
+        const QByteArray caseAnalysisJson = QJsonDocument(entry.caseAnalysisResult().toJson()).toJson(QJsonDocument::Compact);
 
         query.bindValue(":fingerprint", entry.fingerprint().sha256());
         query.bindValue(":provider", providerToString(entry.provider()));
         query.bindValue(":model", entry.model());
         query.bindValue(":summary_text", entry.summaryText());
+        query.bindValue(":case_analysis_result_json", QString::fromUtf8(caseAnalysisJson));
         query.bindValue(":created_at_utc", entry.createdAtUtc().toUTC().toString(Qt::ISODate));
         query.bindValue(":updated_at_utc", entry.updatedAtUtc().toUTC().toString(Qt::ISODate));
 
