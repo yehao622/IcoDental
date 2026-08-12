@@ -9,6 +9,7 @@
 #include "application/AnalysisRequest.hpp"
 #include "domain/ImageFingerprint.hpp"
 #include "domain/ProviderType.hpp"
+#include "domain/CaseAnalysisResult.hpp"
 #include "infrastructure/cache/AnalysisCacheEntry.hpp"
 #include "infrastructure/cache/AnalysisCacheRepository.hpp"
 #include "infrastructure/cache/CacheDatabase.hpp"
@@ -162,6 +163,16 @@ void AnalysisOrchestratorTests::buildPlan_explicitFilesWithCacheHit_returnsCache
 
     const QString dbPath = tempDir.filePath("cache_hit.sqlite");
     const QDateTime now = QDateTime::currentDateTimeUtc();
+    const domain::CaseAnalysisResult cachedResult(
+        "Dr. Smith",
+        "Main Office",
+        "John Doe",
+        "Crown",
+        "36",
+        "A2",
+        "Handle gently",
+        "High confidence",
+        "raw provider text");
 
     QString connectionName;
     {
@@ -182,6 +193,7 @@ void AnalysisOrchestratorTests::buildPlan_explicitFilesWithCacheHit_returnsCache
             domain::ProviderType::Gemini,
             "gemini-2.5-flash",
             "cached summary",
+            cachedResult,
             now,
             now);
 
@@ -224,6 +236,16 @@ void AnalysisOrchestratorTests::buildPlan_forceRefresh_bypassesCache() {
 
     const QString dbPath = tempDir.filePath("force_refresh.sqlite");
     const QDateTime now = QDateTime::currentDateTimeUtc();
+    const domain::CaseAnalysisResult cachedResult(
+        "Dr. Smith",
+        "Main Office",
+        "John Doe",
+        "Crown",
+        "36",
+        "A2",
+        "Handle gently",
+        "High confidence",
+        "raw provider text");
 
     QString connectionName;
     {
@@ -244,6 +266,7 @@ void AnalysisOrchestratorTests::buildPlan_forceRefresh_bypassesCache() {
             domain::ProviderType::Gemini,
             "gemini-2.5-flash",
             "cached summary",
+            cachedResult,
             now,
             now);
 

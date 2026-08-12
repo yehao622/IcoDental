@@ -2,9 +2,11 @@
 
 #include <QDateTime>
 #include <QString>
+#include <utility>
 
 #include "domain/ImageFingerprint.hpp"
 #include "domain/ProviderType.hpp"
+#include "domain/CaseAnalysisResult.hpp"
 
 namespace icodental::infrastructure::cache {
     class AnalysisCacheEntry {
@@ -16,6 +18,7 @@ namespace icodental::infrastructure::cache {
             icodental::domain::ProviderType provider,
             QString model,
             QString summaryText,
+            icodental::domain::CaseAnalysisResult caseAnalysisResult,
             QDateTime createdAtUtc,
             QDateTime updatedAtUtc);
 
@@ -23,6 +26,7 @@ namespace icodental::infrastructure::cache {
 
         [[nodiscard]] const icodental::domain::ImageFingerprint& fingerprint() const;
         [[nodiscard]] icodental::domain::ProviderType provider() const;
+        [[nodiscard]] const icodental::domain::CaseAnalysisResult& caseAnalysisResult() const;
         [[nodiscard]] const QString& model() const;
         [[nodiscard]] const QString& summaryText() const;
         [[nodiscard]] const QDateTime& createdAtUtc() const;
@@ -31,6 +35,7 @@ namespace icodental::infrastructure::cache {
     private:
         icodental::domain::ImageFingerprint m_fingerprint;
         icodental::domain::ProviderType m_provider{icodental::domain::ProviderType::Unknown};
+        icodental::domain::CaseAnalysisResult m_caseAnalysisResult;
         QString m_model;
         QString m_summaryText;
         QDateTime m_createdAtUtc;

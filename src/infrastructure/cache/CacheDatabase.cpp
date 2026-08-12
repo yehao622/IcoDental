@@ -33,20 +33,44 @@ namespace icodental::infrastructure::cache {
         }
 
         QSqlQuery query(db);
-        const bool ok = query.exec(R"(
+        if (!query.exec(R"(
             CREATE TABLE IF NOT EXISTS analysis_cache (
                 fingerprint TEXT PRIMARY KEY,
                 provider TEXT NOT NULL,
                 model TEXT NOT NULL,
                 summary_text TEXT NOT NULL,
+                case_analysis_result_json TEXT NOT NULL,
                 created_at_utc TEXT NOT NULL,
                 updated_at_utc TEXT NOT NULL
             )
-        )");
-
-        if (!ok) {
+        )")) {
             m_lastError = query.lastError().text();
             return false;
+        }
+
+        if (!query.exec(R"(
+            PRAGMA table_info(analysis_cache)
+        )")) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+
+        bool hasCaseAnalysisResultJson = false;
+        while (query.next()) {
+            if (query.value(1).toString() == "case_analysis_result_json") {
+                hasCaseAnalysisResultJson = true;
+                break;
+            }
+        }
+
+        if (!hasCaseAnalysisResultJson) {
+            if (!query.exec(R"(
+                ALTER TABLE analysis_cache
+                ADD COLUMN case_analysis_result_json TEXT NOT NULL DEFAULT '{}'
+            )")) {
+                m_lastError = query.lastError().text();
+                return false;
+            }
         }
 
         return true;
