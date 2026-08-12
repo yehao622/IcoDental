@@ -5,6 +5,7 @@
 #include <QSqlDatabase>
 
 #include "domain/ImageFingerprint.hpp"
+#include "domain/CaseAnalysisResult.hpp"
 #include "infrastructure/cache/AnalysisCacheEntry.hpp"
 
 namespace icodental::infrastructure::cache {

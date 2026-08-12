@@ -33,7 +33,9 @@ void GeminiClientTests::analyze_returnsSuccess_onValidResponse() {
                 {
                   "content": {
                     "parts": [
-                      { "text": "Lab summary from Gemini." }
+                      {
+                        "text": "{\"doctorName\":\"Dr. Kim\",\"officeName\":\"Onion Dental\",\"patientName\":\"Mumen Sarwa\",\"caseType\":\"Crown\",\"toothNumber\":\"#4\",\"shade\":\"A2\",\"specialInstructions\":\"Please refabricate crown on tooth #4.\",\"confidenceNote\":\"Handwriting mostly legible.\",\"rawProviderText\":\"Please refabricate crown on tooth #4.\"}"
+                      }
                     ]
                   }
                 }
@@ -64,7 +66,7 @@ void GeminiClientTests::analyze_returnsSuccess_onValidResponse() {
 
     QVERIFY(response.success());
     QVERIFY(response.isValid());
-    QCOMPARE(response.summaryText(), QString("Lab summary from Gemini."));
+    QCOMPARE(response.summaryText(), QString("Please refabricate crown on tooth #4."));
     QVERIFY(response.errorMessage().isEmpty());
     QCOMPARE(fakeExecutor.callCount, 1);
 }
@@ -109,7 +111,7 @@ void GeminiClientTests::analyze_returnsFailure_onInvalidProvider() {
 
     const providers::ProviderRequest request(
         static_cast<domain::ProviderType>(999),
-        "gemini-1.5-pro",
+        "gemini-2.5-flash",
         "Summarize this case.",
         "/tmp/does-not-matter.jpg");
 
@@ -145,7 +147,7 @@ void GeminiClientTests::analyze_returnsFailure_onMissingImageFile() {
 
     const providers::ProviderRequest request(
         domain::ProviderType::Gemini,
-        "gemini-2.5-pro",
+        "gemini-2.5-flash",
         "Summarize this case.",
         "/path/that/does/not/exist.jpg");
 
@@ -162,17 +164,19 @@ void GeminiClientTests::analyze_postsExpectedEndpointAndPayload() {
     fakeExecutor.nextResult = {
         true,
         R"json(
+        {
+          "candidates": [
             {
-              "candidates": [
-                {
-                  "content": {
-                    "parts": [
-                      { "text": "OK" }
-                    ]
+              "content": {
+                "parts": [
+                  {
+                    "text": "{\"doctorName\":\"Dr. Kim\",\"officeName\":\"Onion Dental\",\"patientName\":\"Mumen Sarwa\",\"caseType\":\"Crown\",\"toothNumber\":\"#4\",\"shade\":\"A2\",\"specialInstructions\":\"Please refabricate crown on tooth #4.\",\"confidenceNote\":\"Handwriting mostly legible.\",\"rawProviderText\":\"Please refabricate crown on tooth #4.\"}"
                   }
-                }
-              ]
+                ]
+              }
             }
+          ]
+        }
         )json",
         QString()
     };

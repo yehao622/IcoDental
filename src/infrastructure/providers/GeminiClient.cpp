@@ -7,8 +7,10 @@
 
 #include "domain/ProviderType.hpp"
 #include "infrastructure/providers/GeminiPayloadBuilder.hpp"
-#include "infrastructure/providers/GeminiResponseParser.hpp"
+#include "infrastructure/providers/CaseAnalysisResultParser.hpp"
 #include "infrastructure/providers/QtNetworkExecutor.hpp"
+
+// #include "infrastructure/providers/GeminiResponseParser.hpp"
 
 namespace icodental::infrastructure::providers {
     GeminiClient::GeminiClient(QString apiKey)
@@ -55,8 +57,10 @@ namespace icodental::infrastructure::providers {
             return ProviderResponse(false, QString(), QString::fromUtf8(result.responseBody), result.errorMessage);
         }
 
-        GeminiResponseParser parser;
-        return parser.parse(result.responseBody);
+        // GeminiResponseParser parser;
+        // return parser.parse(result.responseBody);
+        CaseAnalysisResultParser responseParser;
+        return responseParser.parse(result.responseBody);
     }
 
     ProviderResponse GeminiClient::buildErrorResponse(const QString& message) const {
