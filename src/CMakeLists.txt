@@ -19,6 +19,7 @@ set(ICODENTAL_SOURCES
     infrastructure/cache/AnalysisCacheEntry.cpp
     infrastructure/cache/CacheDatabase.cpp
     infrastructure/cache/AnalysisCacheRepository.cpp
+    bootstrap/ApplicationServices.cpp
     infrastructure/providers/ProviderRequest.cpp
     infrastructure/providers/ProviderResponse.cpp
     infrastructure/providers/GeminiClient.cpp
@@ -48,10 +49,13 @@ add_executable(icodental_app
     ui/MainWindow.cpp
     ui/widgets/ImagePreviewPane.cpp
     ui/widgets/ResultEditorPane.cpp
+    ui/viewmodels/MainViewModel.hpp
+    ui/viewmodels/MainViewModel.cpp
 )
 
 target_link_libraries(icodental_app
     PRIVATE
         icodental_core
         Qt6::Widgets
+        Qt6::Concurrent
 )

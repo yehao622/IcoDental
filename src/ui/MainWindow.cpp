@@ -18,10 +18,14 @@
 #include "domain/CaseAnalysisResult.hpp"
 #include "ui/widgets/ImagePreviewPane.hpp"
 #include "ui/widgets/ResultEditorPane.hpp"
+#include "ui/viewmodels/MainViewModel.hpp"
 
 namespace icodental::ui {
-    MainWindow::MainWindow(QWidget* parent)
+    MainWindow::MainWindow(
+        MainViewModel& viewModel,
+        QWidget* parent)
         : QMainWindow(parent)
+        , m_viewModel(viewModel)
     {
         setWindowTitle("IcoDental");
         resize(1440, 900);
@@ -124,6 +128,41 @@ namespace icodental::ui {
         connect(m_analyzeButton, &QPushButton::clicked, this, [this] {
             analyzeCurrentImage();
         });
+
+        connect(
+            &m_viewModel,
+            &MainViewModel::analysisStarted,
+            this,
+            [this](const QString& message) {
+                setAnalysisControlsEnabled(false);
+                m_statusLabel->setText(message);
+        });
+
+        connect(
+            &m_viewModel,
+            &MainViewModel::analysisSucceeded,
+            this,
+            [this](
+                const icodental::domain::CaseAnalysisResult& result,
+                const QString& message) {
+                setAnalysisControlsEnabled(true);
+                m_resultEditorPane->displayResult(result);
+                m_statusLabel->setText(message);
+        });
+
+        connect(
+            &m_viewModel,
+            &MainViewModel::analysisFailed,
+            this,
+            [this](const QString& message) {
+                setAnalysisControlsEnabled(true);
+                m_statusLabel->setText("Analysis failed.");
+
+                QMessageBox::warning(
+                    this,
+                    "Analysis failed",
+                    message);
+        });
     }
 
     void MainWindow::openImage() {
@@ -185,8 +224,23 @@ namespace icodental::ui {
             return;
         }
 
-        showDemoResult();
-        m_statusLabel->setText(
-            "Demo analysis completed. Real provider integration is the next step.");
+        m_viewModel.analyzeSingleImage(
+            m_selectedImagePath,
+            m_providerComboBox->currentText(),
+            m_modelComboBox->currentText().trimmed(),
+            m_optionalPromptLineEdit->text(),
+            m_forceRefreshCheckBox->isChecked());
+    }
+
+    void MainWindow::setAnalysisControlsEnabled(bool enabled) {
+        m_openImageButton->setEnabled(enabled);
+        m_clearButton->setEnabled(enabled);
+        m_analyzeButton->setEnabled(enabled);
+        m_demoResultButton->setEnabled(enabled);
+
+        m_providerComboBox->setEnabled(enabled);
+        m_modelComboBox->setEnabled(enabled);
+        m_forceRefreshCheckBox->setEnabled(enabled);
+        m_optionalPromptLineEdit->setEnabled(enabled);
     }
 }
