@@ -20,7 +20,7 @@ namespace icodental::infrastructure::providers {
             [[nodiscard]] QString buildEndpoint(const QString& model) const;
 
             QString m_apiKey;
-            INetworkExecutor* m_networkExecutor{nullptr};
             std::unique_ptr<INetworkExecutor> m_ownedNetworkExecutor;
+            INetworkExecutor* m_networkExecutor{nullptr};
     };
 }

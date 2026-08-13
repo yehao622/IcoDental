@@ -10,8 +10,6 @@
 #include "infrastructure/providers/CaseAnalysisResultParser.hpp"
 #include "infrastructure/providers/QtNetworkExecutor.hpp"
 
-// #include "infrastructure/providers/GeminiResponseParser.hpp"
-
 namespace icodental::infrastructure::providers {
     GeminiClient::GeminiClient(QString apiKey)
         : m_apiKey(std::move(apiKey))

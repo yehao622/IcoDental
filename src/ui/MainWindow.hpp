@@ -22,6 +22,7 @@ namespace icodental::ui {
         void clearScreen();
         void showDemoResult();
         void analyzeCurrentImage();
+        void setAnalysisControlsEnabled(bool enabled);
 
         ImagePreviewPane* m_imagePreviewPane{nullptr};
         ResultEditorPane* m_resultEditorPane{nullptr};

@@ -128,6 +128,41 @@ namespace icodental::ui {
         connect(m_analyzeButton, &QPushButton::clicked, this, [this] {
             analyzeCurrentImage();
         });
+
+        connect(
+            &m_viewModel,
+            &MainViewModel::analysisStarted,
+            this,
+            [this](const QString& message) {
+                setAnalysisControlsEnabled(false);
+                m_statusLabel->setText(message);
+        });
+
+        connect(
+            &m_viewModel,
+            &MainViewModel::analysisSucceeded,
+            this,
+            [this](
+                const icodental::domain::CaseAnalysisResult& result,
+                const QString& message) {
+                setAnalysisControlsEnabled(true);
+                m_resultEditorPane->displayResult(result);
+                m_statusLabel->setText(message);
+        });
+
+        connect(
+            &m_viewModel,
+            &MainViewModel::analysisFailed,
+            this,
+            [this](const QString& message) {
+                setAnalysisControlsEnabled(true);
+                m_statusLabel->setText("Analysis failed.");
+
+                QMessageBox::warning(
+                    this,
+                    "Analysis failed",
+                    message);
+        });
     }
 
     void MainWindow::openImage() {
@@ -189,42 +224,23 @@ namespace icodental::ui {
             return;
         }
 
-        const auto outcome = m_viewModel.analyzeSingleImage(
+        m_viewModel.analyzeSingleImage(
             m_selectedImagePath,
             m_providerComboBox->currentText(),
             m_modelComboBox->currentText().trimmed(),
+            m_optionalPromptLineEdit->text(),
             m_forceRefreshCheckBox->isChecked());
+    }
 
-        switch (outcome.status) {
-            case MainViewModel::AnalyzeStatus::CacheHit:
-                m_resultEditorPane->displayResult(
-                    outcome.caseAnalysisResult.value());
-                m_statusLabel->setText(outcome.message);
-                return;
+    void MainWindow::setAnalysisControlsEnabled(bool enabled) {
+        m_openImageButton->setEnabled(enabled);
+        m_clearButton->setEnabled(enabled);
+        m_analyzeButton->setEnabled(enabled);
+        m_demoResultButton->setEnabled(enabled);
 
-            case MainViewModel::AnalyzeStatus::ProviderAnalysisRequired:
-                m_statusLabel->setText(outcome.message);
-
-                QMessageBox::information(
-                    this,
-                    "Provider analysis required",
-                    outcome.message
-                        + "\n\n"
-                          "Gemini analysis will be connected in the next implementation step.");
-                return;
-
-            case MainViewModel::AnalyzeStatus::Error:
-                m_statusLabel->setText("Analysis planning failed.");
-
-                QMessageBox::warning(
-                    this,
-                    "Unable to prepare analysis",
-                    outcome.message);
-                return;
-        }
-
-        showDemoResult();
-        m_statusLabel->setText(
-            "Demo analysis completed. Real provider integration is the next step.");
+        m_providerComboBox->setEnabled(enabled);
+        m_modelComboBox->setEnabled(enabled);
+        m_forceRefreshCheckBox->setEnabled(enabled);
+        m_optionalPromptLineEdit->setEnabled(enabled);
     }
 }
