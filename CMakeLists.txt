@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Sql Network Test Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Sql Network Test Widgets Concurrent)
 
 option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
 

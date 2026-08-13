@@ -19,7 +19,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    icodental::ui::MainViewModel viewModel(services.analysisOrchestrator());
+    icodental::ui::MainViewModel viewModel(services.analysisOrchestrator(),
+        services.cacheRepository());
     icodental::ui::MainWindow window(viewModel);
     window.show();
 
