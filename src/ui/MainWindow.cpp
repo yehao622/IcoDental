@@ -53,7 +53,7 @@ namespace icodental::ui {
 
         m_modelComboBox = new QComboBox(controlFrame);
         m_modelComboBox->setEditable(true);
-        m_modelComboBox->addItems({"gemini-2.5-flash", "gemini-2.5-pro", "llava"});
+        m_modelComboBox->addItems({"gemini-2.5-flash", "ollama"});
 
         m_forceRefreshCheckBox = new QCheckBox("Force refresh", controlFrame);
 
@@ -173,12 +173,12 @@ namespace icodental::ui {
 
                 if (providerName.compare("Ollama", Qt::CaseInsensitive) == 0) {
                     m_modelComboBox->addItems({
-                        "gemma4:e4b"
+                        "gemma4:e4b",
+                        "llama3.2-vision:latest"
                     });
                 } else {
                     m_modelComboBox->addItems({
-                        "gemini-2.5-flash",
-                        "gemini-2.5-pro"
+                        "gemini-2.5-flash"
                     });
                 }
         });
