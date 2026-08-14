@@ -23,6 +23,7 @@ set(ICODENTAL_SOURCES
     infrastructure/providers/ProviderRequest.cpp
     infrastructure/providers/ProviderResponse.cpp
     infrastructure/providers/GeminiClient.cpp
+    infrastructure/providers/OllamaClient.cpp
     infrastructure/providers/GeminiPayloadBuilder.cpp
     infrastructure/providers/GeminiResponseParser.cpp
     infrastructure/providers/QtNetworkExecutor.cpp
