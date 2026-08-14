@@ -5,6 +5,7 @@
 #include <QUrl>
 #include <QFile>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 
 #include "domain/ProviderType.hpp"
@@ -64,7 +65,7 @@ namespace icodental::infrastructure::providers {
         const QString imageBase64 =
             QString::fromLatin1(imageFile.readAll().toBase64());
 
-        const QJsonObject message{
+        const QJsonObject requestMessage{
             {"role", "user"},
             {"content", request.prompt()},
             {"images", QJsonArray{imageBase64}}
@@ -74,12 +75,10 @@ namespace icodental::infrastructure::providers {
             {"model", selectedModel},
             {"stream", false},
             {"format", "json"},
-            {"messages", QJsonArray{message}}
+            {"messages", QJsonArray{requestMessage}}
         };
 
         const QUrl endpoint = buildEndpoint();
-        qInfo() << "Ollama endpoint:" << endpoint.toString();
-        qInfo() << "Ollama model:" << selectedModel;
 
         const NetworkResult result =
             m_networkExecutor->postJson(endpoint, payload);
@@ -92,10 +91,31 @@ namespace icodental::infrastructure::providers {
                 result.errorMessage);
         }
 
+        const QString rawResponse = QString::fromUtf8(result.responseBody);
+        const QJsonDocument responseDocument = QJsonDocument::fromJson(result.responseBody);
+        if (!responseDocument.isObject()) {
+            return ProviderResponse(
+                false,
+                QString(),
+                rawResponse,
+                "Ollama response was not a JSON object.");
+        }
+
+        const QJsonObject responseMessage = responseDocument.object().value("message").toObject();
+        const QString content = responseMessage.value("content").toString().trimmed();
+
+        if (content.isEmpty()) {
+            return ProviderResponse(
+                false,
+                QString(),
+                rawResponse,
+                "Ollama response contained no message content.");
+        }
+
         return ProviderResponse(
             true,
-            QString(),
-            QString::fromUtf8(result.responseBody),
+            content,
+            rawResponse,
             QString());
     }
 
