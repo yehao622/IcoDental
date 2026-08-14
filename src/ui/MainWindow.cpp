@@ -163,6 +163,28 @@ namespace icodental::ui {
                     "Analysis failed",
                     message);
         });
+
+        connect(
+            m_providerComboBox,
+            &QComboBox::currentTextChanged,
+            this,
+            [this](const QString& providerName) {
+                m_modelComboBox->clear();
+
+                if (providerName.compare("Ollama", Qt::CaseInsensitive) == 0) {
+                    m_modelComboBox->addItems({
+                        "gemma4:e4b"
+                    });
+                } else {
+                    m_modelComboBox->addItems({
+                        "gemini-2.5-flash",
+                        "gemini-2.5-pro"
+                    });
+                }
+        });
+
+        emit m_providerComboBox->currentTextChanged(
+            m_providerComboBox->currentText());
     }
 
     void MainWindow::openImage() {

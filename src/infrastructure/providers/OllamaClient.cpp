@@ -81,6 +81,7 @@ namespace icodental::infrastructure::providers {
 
         const QUrl endpoint = buildEndpoint();
 
+        // qInfo() << "Ollama final endpoint:" << buildEndpoint().toString();
         const NetworkResult result =
             m_networkExecutor->postJson(endpoint, payload);
 
