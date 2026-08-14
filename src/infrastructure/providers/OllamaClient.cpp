@@ -3,6 +3,9 @@
 #include <utility>
 
 #include <QUrl>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonObject>
 
 #include "domain/ProviderType.hpp"
 #include "infrastructure/providers/QtNetworkExecutor.hpp"
@@ -47,7 +50,49 @@ namespace icodental::infrastructure::providers {
                 "Ollama network executor is not configured.");
         }
 
-        return buildErrorResponse("Ollama analysis is not implemented yet.");
+        QFile imageFile(request.imagePath());
+        if (!imageFile.open(QIODevice::ReadOnly)) {
+            return buildErrorResponse(
+                QString("Failed to open image file: %1").arg(request.imagePath()));
+        }
+
+        const QString selectedModel =
+            request.model().trimmed().isEmpty()
+                ? m_model
+                : request.model().trimmed();
+
+        const QString imageBase64 =
+            QString::fromLatin1(imageFile.readAll().toBase64());
+
+        const QJsonObject message{
+            {"role", "user"},
+            {"content", request.prompt()},
+            {"images", QJsonArray{imageBase64}}
+        };
+
+        const QJsonObject payload{
+            {"model", selectedModel},
+            {"stream", false},
+            {"format", "json"},
+            {"messages", QJsonArray{message}}
+        };
+
+        const NetworkResult result =
+            m_networkExecutor->postJson(buildEndpoint(), payload);
+
+        if (!result.success) {
+            return ProviderResponse(
+                false,
+                QString(),
+                QString::fromUtf8(result.responseBody),
+                result.errorMessage);
+        }
+
+        return ProviderResponse(
+            true,
+            QString(),
+            QString::fromUtf8(result.responseBody),
+            QString());
     }
 
     ProviderResponse OllamaClient::buildErrorResponse(const QString& message) const {
