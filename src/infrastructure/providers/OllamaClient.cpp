@@ -77,8 +77,12 @@ namespace icodental::infrastructure::providers {
             {"messages", QJsonArray{message}}
         };
 
+        const QUrl endpoint = buildEndpoint();
+        qInfo() << "Ollama endpoint:" << endpoint.toString();
+        qInfo() << "Ollama model:" << selectedModel;
+
         const NetworkResult result =
-            m_networkExecutor->postJson(buildEndpoint(), payload);
+            m_networkExecutor->postJson(endpoint, payload);
 
         if (!result.success) {
             return ProviderResponse(
@@ -102,13 +106,9 @@ namespace icodental::infrastructure::providers {
     QUrl OllamaClient::buildEndpoint() const {
         QUrl url(m_baseUrl.trimmed());
 
-        QString path = url.path();
-        if (!path.endsWith('/')) {
-            path.append('/');
-        }
-        path.append("api/chat");
+        url.setPath("/api/chat");
+        url.setQuery(QString());
 
-        url.setPath(path);
         return url;
     }
 }
