@@ -54,7 +54,13 @@ namespace icodental::ui {
             };
 
             [[nodiscard]] static icodental::domain::ProviderType providerFromName(const QString& providerName);
-            [[nodiscard]] static QString buildGeminiPrompt(const QString& optionalNote);
+            [[nodiscard]] static QString buildAnalysisPrompt(const QString& optionalNote);
+
+            void startOllamaAnalysis(
+                const QString& imagePath,
+                const icodental::domain::ImageFingerprint& fingerprint,
+                const QString& model,
+                const QString& optionalNote);
 
             void startGeminiAnalysis(
                 const QString& imagePath,

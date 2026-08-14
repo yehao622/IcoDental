@@ -33,19 +33,55 @@ namespace icodental::infrastructure::providers {
             return ProviderResponse(false, QString(), rawResponse, "Gemini response text was empty.");
         }
 
-        const QJsonDocument resultDocument = QJsonDocument::fromJson(structuredText.toUtf8());
+        // const QJsonDocument resultDocument = QJsonDocument::fromJson(structuredText.toUtf8());
+        // if (!resultDocument.isObject()) {
+        //     return ProviderResponse(false, QString(), rawResponse, "Gemini result text was not valid JSON.");
+        // }
+
+        // const CaseAnalysisResult result =
+        //     parseResultObject(resultDocument.object(), structuredText);
+
+        // if (!result.isValid()) {
+        //     return ProviderResponse(false, QString(), rawResponse, "Case analysis result was invalid.");
+        // }
+
+        // return ProviderResponse(true, result.rawProviderText(), rawResponse, QString(), result);
+
+        return parseStructuredText(structuredText, rawResponse);
+    }
+
+    ProviderResponse CaseAnalysisResultParser::parseStructuredText(
+        const QString& structuredText,
+        const QString& rawResponse) const
+    {
+        const QJsonDocument resultDocument =
+            QJsonDocument::fromJson(structuredText.toUtf8());
+
         if (!resultDocument.isObject()) {
-            return ProviderResponse(false, QString(), rawResponse, "Gemini result text was not valid JSON.");
+            return ProviderResponse(
+                false,
+                QString(),
+                rawResponse,
+                "Analysis result text was not valid JSON.");
         }
 
         const CaseAnalysisResult result =
             parseResultObject(resultDocument.object(), structuredText);
 
         if (!result.isValid()) {
-            return ProviderResponse(false, QString(), rawResponse, "Case analysis result was invalid.");
+            return ProviderResponse(
+                false,
+                QString(),
+                rawResponse,
+                "Case analysis result was invalid.");
         }
 
-        return ProviderResponse(true, result.rawProviderText(), rawResponse, QString(), result);
+        return ProviderResponse(
+            true,
+            result.rawProviderText(),
+            rawResponse,
+            QString(),
+            result);
     }
 
     CaseAnalysisResult CaseAnalysisResultParser::parseResultObject(
