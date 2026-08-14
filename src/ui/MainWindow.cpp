@@ -53,7 +53,7 @@ namespace icodental::ui {
 
         m_modelComboBox = new QComboBox(controlFrame);
         m_modelComboBox->setEditable(true);
-        m_modelComboBox->addItems({"gemini-2.5-flash", "gemini-2.5-pro", "llava"});
+        m_modelComboBox->addItems({"gemini-2.5-flash", "ollama"});
 
         m_forceRefreshCheckBox = new QCheckBox("Force refresh", controlFrame);
 
@@ -163,6 +163,28 @@ namespace icodental::ui {
                     "Analysis failed",
                     message);
         });
+
+        connect(
+            m_providerComboBox,
+            &QComboBox::currentTextChanged,
+            this,
+            [this](const QString& providerName) {
+                m_modelComboBox->clear();
+
+                if (providerName.compare("Ollama", Qt::CaseInsensitive) == 0) {
+                    m_modelComboBox->addItems({
+                        "gemma4:e4b",
+                        "llama3.2-vision:latest"
+                    });
+                } else {
+                    m_modelComboBox->addItems({
+                        "gemini-2.5-flash"
+                    });
+                }
+        });
+
+        emit m_providerComboBox->currentTextChanged(
+            m_providerComboBox->currentText());
     }
 
     void MainWindow::openImage() {
