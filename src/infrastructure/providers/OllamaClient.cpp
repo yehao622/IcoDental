@@ -10,6 +10,7 @@
 
 #include "domain/ProviderType.hpp"
 #include "infrastructure/providers/QtNetworkExecutor.hpp"
+#include "infrastructure/providers/CaseAnalysisResultParser.hpp"
 
 namespace icodental::infrastructure::providers {
     OllamaClient::OllamaClient(QString baseUrl, QString model)
@@ -112,11 +113,8 @@ namespace icodental::infrastructure::providers {
                 "Ollama response contained no message content.");
         }
 
-        return ProviderResponse(
-            true,
-            content,
-            rawResponse,
-            QString());
+        CaseAnalysisResultParser responseParser;
+        return responseParser.parseStructuredText(content, rawResponse);
     }
 
     ProviderResponse OllamaClient::buildErrorResponse(const QString& message) const {

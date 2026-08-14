@@ -116,7 +116,7 @@ void CaseAnalysisResultParserTests::parse_returnsError_whenStructuredTextIsNotJs
 
     QVERIFY(!response.success());
     QVERIFY(!response.isValid());
-    QCOMPARE(response.errorMessage(), QString("Gemini result text was not valid JSON."));
+    QCOMPARE(response.errorMessage(), QString("Analysis result text was not valid JSON."));
 }
 
 void CaseAnalysisResultParserTests::parse_usesStructuredText_whenRawProviderTextMissing() {
