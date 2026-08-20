@@ -5,6 +5,30 @@
 #include <QJsonObject>
 #include <QString>
 
+namespace {
+    QString normalizeStructuredJson(QString text) {
+        text = text.trimmed();
+
+        if (!text.startsWith("```")) {
+            return text;
+        }
+
+        const int firstNewline = text.indexOf('\n');
+        if (firstNewline < 0) {
+            return text;
+        }
+
+        text = text.mid(firstNewline + 1);
+
+        const int closingFence = text.lastIndexOf("```");
+        if (closingFence >= 0) {
+            text = text.left(closingFence);
+        }
+
+        return text.trimmed();
+    }
+}
+
 namespace icodental::infrastructure::providers {
     using icodental::domain::CaseAnalysisResult;
     
@@ -33,20 +57,6 @@ namespace icodental::infrastructure::providers {
             return ProviderResponse(false, QString(), rawResponse, "Gemini response text was empty.");
         }
 
-        // const QJsonDocument resultDocument = QJsonDocument::fromJson(structuredText.toUtf8());
-        // if (!resultDocument.isObject()) {
-        //     return ProviderResponse(false, QString(), rawResponse, "Gemini result text was not valid JSON.");
-        // }
-
-        // const CaseAnalysisResult result =
-        //     parseResultObject(resultDocument.object(), structuredText);
-
-        // if (!result.isValid()) {
-        //     return ProviderResponse(false, QString(), rawResponse, "Case analysis result was invalid.");
-        // }
-
-        // return ProviderResponse(true, result.rawProviderText(), rawResponse, QString(), result);
-
         return parseStructuredText(structuredText, rawResponse);
     }
 
@@ -54,8 +64,8 @@ namespace icodental::infrastructure::providers {
         const QString& structuredText,
         const QString& rawResponse) const
     {
-        const QJsonDocument resultDocument =
-            QJsonDocument::fromJson(structuredText.toUtf8());
+        const QString normalizedText = normalizeStructuredJson(structuredText);
+        const QJsonDocument resultDocument = QJsonDocument::fromJson(normalizedText.toUtf8());
 
         if (!resultDocument.isObject()) {
             return ProviderResponse(
@@ -65,8 +75,7 @@ namespace icodental::infrastructure::providers {
                 "Analysis result text was not valid JSON.");
         }
 
-        const CaseAnalysisResult result =
-            parseResultObject(resultDocument.object(), structuredText);
+        const CaseAnalysisResult result = parseResultObject(resultDocument.object(), normalizedText);
 
         if (!result.isValid()) {
             return ProviderResponse(
