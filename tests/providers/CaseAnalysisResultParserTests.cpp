@@ -12,6 +12,7 @@ class CaseAnalysisResultParserTests : public QObject {
       void parse_returnsError_whenCandidatesMissing();
       void parse_returnsError_whenStructuredTextIsNotJson();
       void parse_usesStructuredText_whenRawProviderTextMissing();
+      void parseStructuredText_acceptsFencedJson();
 };
 
 void CaseAnalysisResultParserTests::parse_returnsSummaryText_onValidStructuredGeminiResponse() {
@@ -160,6 +161,38 @@ void CaseAnalysisResultParserTests::parse_usesStructuredText_whenRawProviderText
     const auto& result = response.caseAnalysisResult().value();
     QCOMPARE(result.doctorName(), QString("Dr. Kim"));
     QCOMPARE(result.rawProviderText(), response.summaryText());
+}
+
+void CaseAnalysisResultParserTests::parseStructuredText_acceptsFencedJson() {
+    CaseAnalysisResultParser parser;
+
+    const QString structuredText = R"(
+      ```json
+      {
+        "doctorName": "Dr. Kim",
+        "officeName": "Onion Dental",
+        "patientName": "Mumen Sarwa",
+        "caseType": "Crown",
+        "toothNumber": "#4",
+        "shade": "A2",
+        "specialInstructions": "Refabricate crown.",
+        "confidenceNote": "Legible.",
+        "rawProviderText": "Refabricate crown."
+      }
+      ```
+      )";
+
+    const auto response = parser.parseStructuredText(
+        structuredText,
+        "{\"provider\":\"test\"}");
+
+    QVERIFY(response.success());
+    QVERIFY(response.hasCaseAnalysisResult());
+    QVERIFY(response.caseAnalysisResult().has_value());
+
+    const auto& result = response.caseAnalysisResult().value();
+    QCOMPARE(result.doctorName(), QString("Dr. Kim"));
+    QCOMPARE(result.rawProviderText(), QString("Refabricate crown."));
 }
 
 QTEST_APPLESS_MAIN(CaseAnalysisResultParserTests)
