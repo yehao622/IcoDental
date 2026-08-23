@@ -53,6 +53,8 @@ namespace {
         return BatchAnalysisItem{
             path,
             ImageFingerprint(fingerprint),
+            icodental::domain::ProviderType::Gemini,
+            "test-model",
             BatchItemState::Pending,
             QString(),
             std::nullopt
@@ -65,6 +67,8 @@ namespace {
         return BatchAnalysisItem{
             path,
             ImageFingerprint(fingerprint),
+            icodental::domain::ProviderType::Gemini,
+            "test-model",
             BatchItemState::Cached,
             "Loaded from cache.",
             makeResult("Cached patient")
