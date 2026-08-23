@@ -11,6 +11,7 @@
 
 #include "domain/CaseAnalysisResult.hpp"
 #include "domain/ImageFingerprint.hpp"
+#include "domain/ProviderType.hpp"
 #include "infrastructure/providers/ProviderResponse.hpp"
 
 namespace icodental::ui {
@@ -26,6 +27,10 @@ namespace icodental::ui {
     struct BatchAnalysisItem {
         QString imagePath;
         icodental::domain::ImageFingerprint fingerprint;
+        icodental::domain::ProviderType provider{
+            icodental::domain::ProviderType::Unknown
+        };
+        QString model;
         BatchItemState state{BatchItemState::Pending};
         QString message;
         std::optional<icodental::domain::CaseAnalysisResult> result;
