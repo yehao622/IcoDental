@@ -45,6 +45,8 @@ namespace icodental::ui {
             void cancelBatchAnalysis();
             [[nodiscard]] const BatchAnalysisController& batchController() const;
 
+            void saveBatchResultToCache(int index);
+
         signals:
             void analysisStarted(const QString& message);
 
