@@ -28,6 +28,7 @@ set(ICODENTAL_SOURCES
     infrastructure/providers/GeminiResponseParser.cpp
     infrastructure/providers/QtNetworkExecutor.cpp
     infrastructure/providers/CaseAnalysisResultParser.cpp
+    ui/viewmodels/BatchAnalysisController.cpp
 )
 
 add_library(icodental_core STATIC ${ICODENTAL_SOURCES})
@@ -37,6 +38,7 @@ target_link_libraries(icodental_core
         Qt6::Core
         Qt6::Sql
         Qt6::Network
+        Qt6::Concurrent
 )
 
 target_include_directories(icodental_core

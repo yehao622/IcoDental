@@ -2,6 +2,9 @@
 
 #include <QDateTime>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QFuture>
+#include <QFutureWatcher>
+#include <QDebug>
 
 #include "application/AnalysisItem.hpp"
 #include "application/AnalysisOrchestrator.hpp"
@@ -16,6 +19,8 @@
 
 namespace icodental::ui {
     using icodental::application::AnalysisRequest;
+    using icodental::application::AnalysisItem;
+    using icodental::application::AnalysisPlan;
     using icodental::domain::CaseAnalysisResult;
     using icodental::domain::ProviderType;
     using icodental::infrastructure::cache::AnalysisCacheEntry;
@@ -31,12 +36,49 @@ namespace icodental::ui {
         : QObject(parent)
         , m_analysisOrchestrator(analysisOrchestrator)
         , m_cacheRepository(cacheRepository)
+        , m_batchController(this)
     {
         connect(
         &m_providerWatcher,
         &QFutureWatcher<ProviderResponse>::finished,
         this,
         &MainViewModel::onProviderFinished);
+
+        connect(
+        &m_batchController,
+        &BatchAnalysisController::batchStarted,
+        this,
+        &MainViewModel::batchAnalysisStarted);
+
+        connect(
+        &m_batchController,
+        &BatchAnalysisController::itemUpdated,
+        this,
+        &MainViewModel::batchAnalysisItemUpdated);
+
+        connect(
+        &m_batchController,
+        &BatchAnalysisController::progressChanged,
+        this,
+        &MainViewModel::batchAnalysisProgressChanged);
+
+        connect(
+        &m_batchController,
+        &BatchAnalysisController::batchFinished,
+        this,
+        &MainViewModel::batchAnalysisFinished);
+
+        connect(
+        &m_batchController,
+        &BatchAnalysisController::batchFailedToStart,
+        this,
+        &MainViewModel::batchAnalysisFailedToStart);
+
+        connect(
+        &m_batchController,
+        &BatchAnalysisController::itemUpdated,
+        this,
+        &MainViewModel::saveBatchResultToCache);
     }
 
     void MainViewModel::startOllamaAnalysis(
@@ -295,5 +337,192 @@ namespace icodental::ui {
                     GeminiClient client(apiKey);
                     return client.analyze(request);
                 }));
+    }
+
+    void MainViewModel::analyzeBatch(
+        const QStringList& imagePaths,
+        const QString& providerName,
+        const QString& model,
+        const QString& optionalNote,
+        bool forceRefresh)
+    {
+        if (m_providerWatcher.isRunning() || m_batchController.isRunning()) {
+            emit batchAnalysisFailedToStart(
+                "An analysis is already running.");
+            return;
+        }
+
+        const ProviderType provider = providerFromName(providerName);
+
+        if (provider == ProviderType::Unknown) {
+            emit batchAnalysisFailedToStart(
+                "Choose a supported provider before analyzing.");
+            return;
+        }
+
+        const AnalysisRequest request(
+            AnalysisRequest::InputMode::ExplicitFiles,
+            QString(),
+            imagePaths,
+            provider,
+            model,
+            forceRefresh);
+
+        const AnalysisPlan plan = m_analysisOrchestrator.buildPlan(request);
+
+        if (plan.hasErrors()) {
+            emit batchAnalysisFailedToStart(
+                plan.errors().join("\n"));
+            return;
+        }
+
+        QList<BatchAnalysisItem> batchItems;
+
+        for (const AnalysisItem& cachedItem : plan.cachedItems()) {
+            if (!cachedItem.hasCachedEntry()
+                || !cachedItem.cachedEntry().has_value()) {
+                continue;
+            }
+
+            const auto& entry = cachedItem.cachedEntry().value();
+
+            if (!forceRefresh
+                && entry.provider() == provider
+                && entry.model() == model) {
+                batchItems.append(BatchAnalysisItem{
+                    cachedItem.filePath(),
+                    cachedItem.fingerprint(),
+                    provider,
+                    model,
+                    BatchItemState::Cached,
+                    "Loaded from cache.",
+                    entry.caseAnalysisResult()
+                });
+            } else {
+                batchItems.append(BatchAnalysisItem{
+                    cachedItem.filePath(),
+                    cachedItem.fingerprint(),
+                    provider,
+                    model,
+                    BatchItemState::Pending,
+                    QString(),
+                    std::nullopt
+                });
+            }
+        }
+
+        for (const AnalysisItem& pendingItem : plan.pendingItems()) {
+            batchItems.append(BatchAnalysisItem{
+                pendingItem.filePath(),
+                pendingItem.fingerprint(),
+                provider,
+                model,
+                BatchItemState::Pending,
+                QString(),
+                std::nullopt
+            });
+        }
+
+        if (batchItems.isEmpty()) {
+            emit batchAnalysisFailedToStart(
+                "No supported images were found for batch analysis.");
+            return;
+        }
+
+        m_batchController.start(
+            std::move(batchItems),
+            [this, provider, model, optionalNote](
+                const QString& imagePath,
+                const icodental::domain::ImageFingerprint&) {
+                return startProviderTask(
+                    provider,
+                    model,
+                    optionalNote,
+                    imagePath);
+        });
+    }
+
+    QFuture<ProviderResponse> MainViewModel::startProviderTask(
+        ProviderType provider,
+        const QString& model,
+        const QString& optionalNote,
+        const QString& imagePath)
+    {
+        const ProviderRequest request(
+            provider,
+            model,
+            buildAnalysisPrompt(optionalNote),
+            imagePath);
+
+        if (provider == ProviderType::Gemini) {
+            const QString apiKey =
+                icodental::infrastructure::config::SecretResolver::geminiApiKey();
+
+            return QtConcurrent::run(
+                [apiKey, request]() {
+                    if (apiKey.trimmed().isEmpty()) {
+                        return ProviderResponse(
+                            false,
+                            QString(),
+                            QString(),
+                            "Gemini API key is missing.");
+                    }
+
+                    GeminiClient client(apiKey);
+                    return client.analyze(request);
+                });
+        }
+
+        const QString ollamaBaseUrl =
+            QStringLiteral("http://localhost:11434");
+
+        return QtConcurrent::run(
+            [ollamaBaseUrl, model, request]() {
+                OllamaClient client(ollamaBaseUrl, model);
+                return client.analyze(request);
+            });
+    }
+
+    void MainViewModel::cancelBatchAnalysis() {
+        m_batchController.cancel();
+    }
+
+    const BatchAnalysisController& MainViewModel::batchController() const {
+        return m_batchController;
+    }
+
+    void MainViewModel::saveBatchResultToCache(int index) {
+        const QList<BatchAnalysisItem>& items = m_batchController.items();
+
+        if (index < 0 || index >= items.size()) {
+            return;
+        }
+
+        const BatchAnalysisItem& item = items.at(index);
+
+        if (item.state != BatchItemState::Succeeded
+            || !item.result.has_value()
+            || item.provider == ProviderType::Unknown
+            || item.model.trimmed().isEmpty()) {
+            return;
+        }
+
+        const QDateTime now = QDateTime::currentDateTimeUtc();
+
+        const AnalysisCacheEntry cacheEntry(
+            item.fingerprint,
+            item.provider,
+            item.model,
+            item.result->rawProviderText(),
+            item.result.value(),
+            now,
+            now);
+
+        const bool saved = m_cacheRepository.save(cacheEntry);
+        if (!saved) {
+            qWarning().noquote()
+                << "Batch analysis result was not cached:"
+                << m_cacheRepository.lastError();
+        }
     }
 }
