@@ -1,6 +1,10 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QAbstractItemView>
+#include <QHeaderView>
+#include <QProgressBar>
+#include <QTableWidget>
 
 class QCheckBox;
 class QComboBox;
@@ -23,6 +27,11 @@ namespace icodental::ui {
         void showDemoResult();
         void analyzeCurrentImage();
         void setAnalysisControlsEnabled(bool enabled);
+        void openImages();
+        void cancelBatch();
+        void refreshBatchTable();
+        void updateBatchProgress(int completedCount, int totalCount);
+        void showBatchFinished(int succeededCount, int failedCount, int cancelledCount);
 
         ImagePreviewPane* m_imagePreviewPane{nullptr};
         ResultEditorPane* m_resultEditorPane{nullptr};
@@ -31,6 +40,10 @@ namespace icodental::ui {
         QPushButton* m_analyzeButton{nullptr};
         QPushButton* m_demoResultButton{nullptr};
         QPushButton* m_clearButton{nullptr};
+        QPushButton* m_openImagesButton{nullptr};
+        QPushButton* m_cancelBatchButton{nullptr};
+        QProgressBar* m_batchProgressBar{nullptr};
+        QTableWidget* m_batchTable{nullptr};
 
         QComboBox* m_providerComboBox{nullptr};
         QComboBox* m_modelComboBox{nullptr};
