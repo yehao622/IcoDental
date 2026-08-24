@@ -4,6 +4,7 @@
 #include <QtConcurrent/QtConcurrentRun>
 #include <QFuture>
 #include <QFutureWatcher>
+#include <QDebug>
 
 #include "application/AnalysisItem.hpp"
 #include "application/AnalysisOrchestrator.hpp"
@@ -72,6 +73,12 @@ namespace icodental::ui {
         &BatchAnalysisController::batchFailedToStart,
         this,
         &MainViewModel::batchAnalysisFailedToStart);
+
+        connect(
+        &m_batchController,
+        &BatchAnalysisController::itemUpdated,
+        this,
+        &MainViewModel::saveBatchResultToCache);
     }
 
     void MainViewModel::startOllamaAnalysis(
@@ -482,5 +489,40 @@ namespace icodental::ui {
 
     const BatchAnalysisController& MainViewModel::batchController() const {
         return m_batchController;
+    }
+
+    void MainViewModel::saveBatchResultToCache(int index) {
+        const QList<BatchAnalysisItem>& items = m_batchController.items();
+
+        if (index < 0 || index >= items.size()) {
+            return;
+        }
+
+        const BatchAnalysisItem& item = items.at(index);
+
+        if (item.state != BatchItemState::Succeeded
+            || !item.result.has_value()
+            || item.provider == ProviderType::Unknown
+            || item.model.trimmed().isEmpty()) {
+            return;
+        }
+
+        const QDateTime now = QDateTime::currentDateTimeUtc();
+
+        const AnalysisCacheEntry cacheEntry(
+            item.fingerprint,
+            item.provider,
+            item.model,
+            item.result->rawProviderText(),
+            item.result.value(),
+            now,
+            now);
+
+        const bool saved = m_cacheRepository.save(cacheEntry);
+        if (!saved) {
+            qWarning().noquote()
+                << "Batch analysis result was not cached:"
+                << m_cacheRepository.lastError();
+        }
     }
 }
