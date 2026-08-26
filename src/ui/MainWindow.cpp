@@ -49,7 +49,9 @@ namespace icodental::ui {
         m_demoResultButton = new QPushButton("Load demo result", controlFrame);
         m_clearButton = new QPushButton("Clear", controlFrame);
 
-        m_openImagesButton = new QPushButton("Open images…", controlFrame);
+        m_chooseImagesButton = new QPushButton("Choose images…", controlFrame);
+        m_startBatchButton = new QPushButton("Start batch", controlFrame);
+        m_startBatchButton->setEnabled(false);
         m_cancelBatchButton = new QPushButton("Cancel batch", controlFrame);
         m_cancelBatchButton->setEnabled(false);
 
@@ -63,7 +65,8 @@ namespace icodental::ui {
         m_forceRefreshCheckBox = new QCheckBox("Force refresh", controlFrame);
 
         firstRow->addWidget(m_openImageButton);
-        firstRow->addWidget(m_openImagesButton);
+        firstRow->addWidget(m_chooseImagesButton);
+        firstRow->addWidget(m_startBatchButton);
         firstRow->addWidget(m_cancelBatchButton);
         firstRow->addWidget(m_clearButton);
         firstRow->addSpacing(12);
@@ -152,8 +155,12 @@ namespace icodental::ui {
             openImage();
         });
 
-        connect(m_openImagesButton, &QPushButton::clicked, this, [this] {
-            openImages();
+        connect(m_chooseImagesButton, &QPushButton::clicked, this, [this] {
+            chooseImages();
+        });
+
+        connect(m_startBatchButton, &QPushButton::clicked, this, [this] { 
+            startBatch(); 
         });
 
         connect(m_cancelBatchButton, &QPushButton::clicked, this, [this] { 
@@ -263,10 +270,11 @@ namespace icodental::ui {
             &MainViewModel::batchAnalysisFailedToStart,
             this,
             [this](const QString& message) {
-                m_openImageButton->setEnabled(true);
-                m_openImagesButton->setEnabled(true);
-                m_analyzeButton->setEnabled(true);
-                m_cancelBatchButton->setEnabled(false);
+                // m_openImageButton->setEnabled(true);
+                // m_chooseImagesButton->setEnabled(true);
+                // m_analyzeButton->setEnabled(true);
+                // m_cancelBatchButton->setEnabled(false);
+                setBatchControlsRunning(false);
 
                 QMessageBox::warning(
                     this,
@@ -340,7 +348,7 @@ namespace icodental::ui {
             QString("Loaded: %1").arg(QFileInfo(imagePath).fileName()));
     }
 
-    void MainWindow::openImages() {
+    void MainWindow::chooseImages() {
         const QStringList imagePaths = QFileDialog::getOpenFileNames(
             this,
             "Choose prescription images",
@@ -351,25 +359,94 @@ namespace icodental::ui {
             return;
         }
 
+        m_batchImagePaths = imagePaths;
+
         m_batchTable->setVisible(true);
-        m_batchTable->setRowCount(0);
+        m_batchTable->setRowCount(imagePaths.size());
+
+        for (int row = 0; row < imagePaths.size(); ++row) {
+            const QString& imagePath = imagePaths.at(row);
+
+            m_batchTable->setItem(
+                row,
+                0,
+                new QTableWidgetItem(
+                    QFileInfo(imagePath).fileName()));
+
+            m_batchTable->setItem(
+                row,
+                1,
+                new QTableWidgetItem("Ready"));
+
+            m_batchTable->setItem(
+                row,
+                2,
+                new QTableWidgetItem(
+                    m_providerComboBox->currentText()));
+
+            m_batchTable->setItem(
+                row,
+                3,
+                new QTableWidgetItem(
+                    m_modelComboBox->currentText()));
+
+            m_batchTable->setItem(
+                row,
+                4,
+                new QTableWidgetItem(
+                    m_forceRefreshCheckBox->isChecked()
+                        ? "Will be reanalyzed."
+                        : "Will use cache when available."));
+        }
+
+        m_batchTable->resizeColumnsToContents();
 
         m_batchProgressBar->setRange(0, imagePaths.size());
         m_batchProgressBar->setValue(0);
         m_batchProgressBar->setFormat(
-            QString("Preparing %1 images…").arg(imagePaths.size()));
+            QString("%1 image(s) ready to analyze.")
+                .arg(imagePaths.size()));
 
-        m_openImageButton->setEnabled(false);
-        m_openImagesButton->setEnabled(false);
-        m_analyzeButton->setEnabled(false);
-        m_cancelBatchButton->setEnabled(true);
+        m_startBatchButton->setEnabled(true);
+        m_cancelBatchButton->setEnabled(false);
+
+        m_statusLabel->setText(
+            QString("%1 image(s) selected. Review settings, then start batch.")
+                .arg(imagePaths.size()));
+    }
+
+    void MainWindow::startBatch() {
+        if (m_batchImagePaths.isEmpty()) {
+            QMessageBox::information(
+                this,
+                "Choose images first",
+                "Choose one or more prescription images before starting a batch.");
+            return;
+        }
+
+        setBatchControlsRunning(true);
 
         m_viewModel.analyzeBatch(
-            imagePaths,
+            m_batchImagePaths,
             m_providerComboBox->currentText(),
             m_modelComboBox->currentText(),
             m_optionalPromptLineEdit->text(),
             m_forceRefreshCheckBox->isChecked());
+    }
+
+    void MainWindow::setBatchControlsRunning(bool running) {
+        m_openImageButton->setEnabled(!running);
+        m_chooseImagesButton->setEnabled(!running);
+        m_startBatchButton->setEnabled(!running && !m_batchImagePaths.isEmpty());
+        m_analyzeButton->setEnabled(!running);
+        m_clearButton->setEnabled(!running);
+
+        m_providerComboBox->setEnabled(!running);
+        m_modelComboBox->setEnabled(!running);
+        m_optionalPromptLineEdit->setEnabled(!running);
+        m_forceRefreshCheckBox->setEnabled(!running);
+
+        m_cancelBatchButton->setEnabled(running);
     }
 
     void MainWindow::clearScreen() {
@@ -524,10 +601,9 @@ namespace icodental::ui {
         int failedCount,
         int cancelledCount)
     {
-        m_openImageButton->setEnabled(true);
-        m_openImagesButton->setEnabled(true);
-        m_analyzeButton->setEnabled(true);
-        m_cancelBatchButton->setEnabled(false);
+        setBatchControlsRunning(false);
+        m_batchImagePaths.clear();
+        m_startBatchButton->setEnabled(false);
 
         const int totalCount =
             succeededCount + failedCount + cancelledCount;
