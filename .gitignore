@@ -3,6 +3,9 @@
 /cmake-build-*/
 /build-*/
 
+# Real data
+/LabSheet/
+
 # CMake generated files
 CMakeCache.txt
 CMakeFiles/
