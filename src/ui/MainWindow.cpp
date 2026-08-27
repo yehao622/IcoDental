@@ -10,10 +10,14 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QSplitter>
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QItemSelectionModel>
+
+#include <algorithm>
 
 #include "domain/CaseAnalysisResult.hpp"
 #include "domain/ProviderType.hpp"
@@ -43,16 +47,27 @@ namespace icodental::ui {
         controlLayout->setContentsMargins(12, 12, 12, 12);
         controlLayout->setSpacing(8);
 
-        auto* firstRow = new QHBoxLayout;
+        auto* batchActionsRow = new QHBoxLayout;
+        auto* analysisSettingsRow = new QHBoxLayout;
+
         m_openImageButton = new QPushButton("Open image", controlFrame);
         m_analyzeButton = new QPushButton("Analyze", controlFrame);
         m_demoResultButton = new QPushButton("Load demo result", controlFrame);
         m_clearButton = new QPushButton("Clear", controlFrame);
 
-        m_chooseImagesButton = new QPushButton("Choose images…", controlFrame);
-        m_startBatchButton = new QPushButton("Start batch", controlFrame);
+        m_chooseImagesButton =
+            new QPushButton("Choose images…", controlFrame);
+
+        m_startBatchButton =
+            new QPushButton("Start batch", controlFrame);
         m_startBatchButton->setEnabled(false);
-        m_cancelBatchButton = new QPushButton("Cancel batch", controlFrame);
+
+        m_removeSelectedButton =
+            new QPushButton("Remove selected", controlFrame);
+        m_removeSelectedButton->setEnabled(false);
+
+        m_cancelBatchButton =
+            new QPushButton("Cancel batch", controlFrame);
         m_cancelBatchButton->setEnabled(false);
 
         m_providerComboBox = new QComboBox(controlFrame);
@@ -60,24 +75,42 @@ namespace icodental::ui {
 
         m_modelComboBox = new QComboBox(controlFrame);
         m_modelComboBox->setEditable(true);
-        m_modelComboBox->addItems({"gemini-2.5-flash", "ollama"});
+        m_modelComboBox->addItem("gemini-2.5-flash");
 
-        m_forceRefreshCheckBox = new QCheckBox("Force refresh", controlFrame);
+        m_forceRefreshCheckBox =
+            new QCheckBox("Force refresh", controlFrame);
 
-        firstRow->addWidget(m_openImageButton);
-        firstRow->addWidget(m_chooseImagesButton);
-        firstRow->addWidget(m_startBatchButton);
-        firstRow->addWidget(m_cancelBatchButton);
-        firstRow->addWidget(m_clearButton);
-        firstRow->addSpacing(12);
-        firstRow->addWidget(new QLabel("Provider", controlFrame));
-        firstRow->addWidget(m_providerComboBox);
-        firstRow->addWidget(new QLabel("Model", controlFrame));
-        firstRow->addWidget(m_modelComboBox, 1);
-        firstRow->addWidget(m_forceRefreshCheckBox);
-        firstRow->addStretch();
-        firstRow->addWidget(m_demoResultButton);
-        firstRow->addWidget(m_analyzeButton);
+        m_chooseImagesButton->setMinimumWidth(120);
+        m_startBatchButton->setMinimumWidth(100);
+        m_removeSelectedButton->setMinimumWidth(135);
+        m_cancelBatchButton->setMinimumWidth(110);
+
+        m_providerComboBox->setMinimumWidth(105);
+        m_modelComboBox->setMinimumWidth(180);
+
+        m_forceRefreshCheckBox->setSizePolicy(
+            QSizePolicy::Maximum,
+            QSizePolicy::Preferred);
+
+        batchActionsRow->addWidget(m_openImageButton);
+        batchActionsRow->addWidget(m_chooseImagesButton);
+        batchActionsRow->addWidget(m_startBatchButton);
+        batchActionsRow->addWidget(m_removeSelectedButton);
+        batchActionsRow->addWidget(m_cancelBatchButton);
+        batchActionsRow->addWidget(m_clearButton);
+        batchActionsRow->addStretch();
+
+        analysisSettingsRow->addWidget(
+            new QLabel("Provider", controlFrame));
+        analysisSettingsRow->addWidget(m_providerComboBox);
+
+        analysisSettingsRow->addWidget(
+            new QLabel("Model", controlFrame));
+        analysisSettingsRow->addWidget(m_modelComboBox, 1);
+
+        analysisSettingsRow->addWidget(m_forceRefreshCheckBox);
+        analysisSettingsRow->addWidget(m_demoResultButton);
+        analysisSettingsRow->addWidget(m_analyzeButton);
 
         auto* secondRow = new QHBoxLayout;
         secondRow->addWidget(new QLabel("Optional note", controlFrame));
@@ -86,7 +119,8 @@ namespace icodental::ui {
             "Optional instruction for the analysis, such as “focus on the shade and tooth number”");
         secondRow->addWidget(m_optionalPromptLineEdit, 1);
 
-        controlLayout->addLayout(firstRow);
+        controlLayout->addLayout(batchActionsRow);
+        controlLayout->addLayout(analysisSettingsRow);
         controlLayout->addLayout(secondRow);
 
         auto* batchLayout = new QHBoxLayout;
@@ -140,8 +174,7 @@ namespace icodental::ui {
         m_batchTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
         m_batchTable->setSelectionBehavior(
             QAbstractItemView::SelectRows);
-        m_batchTable->setSelectionMode(
-            QAbstractItemView::SingleSelection);
+        m_batchTable->setSelectionMode(QAbstractItemView::ExtendedSelection);
         m_batchTable->horizontalHeader()->setStretchLastSection(true);
         m_batchTable->setVisible(false);
         rootLayout->addWidget(m_batchTable);
@@ -270,10 +303,6 @@ namespace icodental::ui {
             &MainViewModel::batchAnalysisFailedToStart,
             this,
             [this](const QString& message) {
-                // m_openImageButton->setEnabled(true);
-                // m_chooseImagesButton->setEnabled(true);
-                // m_analyzeButton->setEnabled(true);
-                // m_cancelBatchButton->setEnabled(false);
                 setBatchControlsRunning(false);
 
                 QMessageBox::warning(
@@ -287,37 +316,23 @@ namespace icodental::ui {
             &QTableWidget::cellClicked,
             this,
             [this](int row, int) {
-                const auto& items =
-                    m_viewModel.batchController().items();
-
-                if (row < 0 || row >= items.size()) {
-                    return;
-                }
-
-                const BatchAnalysisItem& item = items.at(row);
-
-                if (!m_imagePreviewPane->loadImage(item.imagePath)) {
-                    QMessageBox::warning(
-                        this,
-                        "Unable to open image",
-                        QString("Could not load: %1").arg(item.imagePath));
-                    return;
-                }
-
-                m_selectedImagePath = item.imagePath;
-
-                if (item.result.has_value()) {
-                    m_resultEditorPane->displayResult(item.result.value());
-                } else {
-                    m_resultEditorPane->clearResult();
-                }
-
-                m_statusLabel->setText(
-                    QString("%1 — %2")
-                        .arg(QFileInfo(item.imagePath).fileName())
-                        .arg(item.message));
+                reviewBatchRow(row);
             }
         );
+
+        connect(
+            m_removeSelectedButton,
+            &QPushButton::clicked,
+            this,
+            [this] { removeSelectedBatchRows(); });
+
+        connect(
+            m_batchTable->selectionModel(),
+            &QItemSelectionModel::selectionChanged,
+            this,
+            [this] {
+                updateBatchActionButtons();
+        });
 
         emit m_providerComboBox->currentTextChanged(
             m_providerComboBox->currentText());
@@ -413,6 +428,19 @@ namespace icodental::ui {
         m_statusLabel->setText(
             QString("%1 image(s) selected. Review settings, then start batch.")
                 .arg(imagePaths.size()));
+
+        m_batchTable->selectRow(0);
+
+        if (!m_imagePreviewPane->loadImage(m_batchImagePaths.first())) {
+            QMessageBox::warning(
+                this,
+                "Unable to open image",
+                QString("Could not load: %1")
+                    .arg(m_batchImagePaths.first()));
+        } else {
+            m_selectedImagePath = m_batchImagePaths.first();
+            m_resultEditorPane->clearResult();
+        }
     }
 
     void MainWindow::startBatch() {
@@ -538,8 +566,7 @@ namespace icodental::ui {
     }
 
     void MainWindow::refreshBatchTable() {
-        const QList<BatchAnalysisItem>& items =
-            m_viewModel.batchController().items();
+        const QList<BatchAnalysisItem>& items = m_viewModel.batchController().items();
 
         m_batchTable->setRowCount(items.size());
 
@@ -617,5 +644,117 @@ namespace icodental::ui {
                 .arg(cancelledCount));
 
         refreshBatchTable();
+    }
+
+    void MainWindow::removeSelectedBatchRows() {
+        if (m_viewModel.batchController().isRunning()) {
+            return;
+        }
+
+        QModelIndexList selectedRows =
+            m_batchTable->selectionModel()->selectedRows();
+
+        if (selectedRows.isEmpty()) {
+            return;
+        }
+
+        std::sort(
+            selectedRows.begin(),
+            selectedRows.end(),
+            [](const QModelIndex& left, const QModelIndex& right) {
+                return left.row() > right.row();
+            });
+
+        for (const QModelIndex& index : selectedRows) {
+            const int row = index.row();
+
+            if (row >= 0 && row < m_batchImagePaths.size()) {
+                m_batchImagePaths.removeAt(row);
+            }
+
+            m_batchTable->removeRow(row);
+        }
+
+        if (m_batchImagePaths.isEmpty()) {
+            m_startBatchButton->setEnabled(false);
+
+            m_batchProgressBar->setRange(0, 1);
+            m_batchProgressBar->setValue(0);
+            m_batchProgressBar->setFormat("No images selected.");
+
+            m_statusLabel->setText(
+                "No batch images selected.");
+        } else {
+            m_batchProgressBar->setRange(
+                0,
+                m_batchImagePaths.size());
+
+            m_batchProgressBar->setValue(0);
+            m_batchProgressBar->setFormat(
+                QString("%1 image(s) ready to analyze.")
+                    .arg(m_batchImagePaths.size()));
+
+            m_statusLabel->setText(
+                QString("%1 image(s) selected. Review settings, then start batch.")
+                    .arg(m_batchImagePaths.size()));
+        }
+
+        updateBatchActionButtons();
+    }
+
+    void MainWindow::updateBatchActionButtons() {
+        const bool batchRunning = m_viewModel.batchController().isRunning();
+
+        const bool hasSelection =
+            m_batchTable->selectionModel() != nullptr
+            && !m_batchTable->selectionModel()
+                    ->selectedRows()
+                    .isEmpty();
+
+        const bool hasBatchImages = !m_batchImagePaths.isEmpty();
+
+        m_removeSelectedButton->setEnabled(!batchRunning && hasSelection);
+
+        m_startBatchButton->setEnabled(!batchRunning && hasBatchImages);
+    }
+
+    void MainWindow::reviewBatchRow(int row) {
+        if (row < 0 || row >= m_batchImagePaths.size()) {
+            return;
+        }
+
+        const QString& imagePath = m_batchImagePaths.at(row);
+
+        if (!m_imagePreviewPane->loadImage(imagePath)) {
+            QMessageBox::warning(
+                this,
+                "Unable to open image",
+                QString("Could not load: %1").arg(imagePath));
+            return;
+        }
+
+        m_selectedImagePath = imagePath;
+
+        const auto& items = m_viewModel.batchController().items();
+
+        if (row < items.size() && items.at(row).result.has_value()) {
+            m_resultEditorPane->displayResult(items.at(row).result.value());
+            m_statusLabel->setText(
+                QString("Showing result for: %1")
+                    .arg(QFileInfo(imagePath).fileName()));
+            return;
+        }
+
+        m_resultEditorPane->clearResult();
+
+        QString stateMessage = "Ready to analyze.";
+        if (row < items.size()) {
+            stateMessage = items.at(row).message;
+        }
+
+        m_statusLabel->setText(
+            QString("%1 — %2")
+                .arg(QFileInfo(imagePath).fileName())
+                .arg(stateMessage));
     }
 }

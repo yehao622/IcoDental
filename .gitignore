@@ -3,7 +3,7 @@
 /cmake-build-*/
 /build-*/
 
-# Real data
+# Real Labsheet
 /LabSheet/
 
 # CMake generated files
@@ -33,3 +33,6 @@ config/secrets*
 *.pem
 *.key
 credentials.json
+
+# Local lab sheets containing sensitive data
+/LabSheet/
