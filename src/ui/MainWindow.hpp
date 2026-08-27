@@ -35,6 +35,9 @@ namespace icodental::ui {
         void refreshBatchTable();
         void updateBatchProgress(int completedCount, int totalCount);
         void showBatchFinished(int succeededCount, int failedCount, int cancelledCount);
+        void removeSelectedBatchRows();
+        void updateBatchActionButtons();
+        void reviewBatchRow(int row);
 
         ImagePreviewPane* m_imagePreviewPane{nullptr};
         ResultEditorPane* m_resultEditorPane{nullptr};
@@ -47,6 +50,7 @@ namespace icodental::ui {
         QPushButton* m_startBatchButton{nullptr};
         QPushButton* m_cancelBatchButton{nullptr};
         QProgressBar* m_batchProgressBar{nullptr};
+        QPushButton* m_removeSelectedButton{nullptr};
         QTableWidget* m_batchTable{nullptr};
 
         QStringList m_batchImagePaths;
