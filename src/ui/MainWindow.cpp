@@ -629,7 +629,6 @@ namespace icodental::ui {
         int cancelledCount)
     {
         setBatchControlsRunning(false);
-        m_batchImagePaths.clear();
         m_startBatchButton->setEnabled(false);
 
         const int totalCount =
@@ -644,6 +643,13 @@ namespace icodental::ui {
                 .arg(cancelledCount));
 
         refreshBatchTable();
+
+        m_statusLabel->setText(
+            QString("Batch finished: %1 succeeded, %2 failed, %3 cancelled. "
+                    "Select a row to review its image and result.")
+                .arg(succeededCount)
+                .arg(failedCount)
+                .arg(cancelledCount));
     }
 
     void MainWindow::removeSelectedBatchRows() {
@@ -737,24 +743,31 @@ namespace icodental::ui {
 
         const auto& items = m_viewModel.batchController().items();
 
-        if (row < items.size() && items.at(row).result.has_value()) {
-            m_resultEditorPane->displayResult(items.at(row).result.value());
+        if (row < items.size()) {
+            const BatchAnalysisItem& item = items.at(row);
+
+            if (item.result.has_value()) {
+                m_resultEditorPane->displayResult(item.result.value());
+                m_statusLabel->setText(
+                    QString("%1 — %2")
+                        .arg(QFileInfo(imagePath).fileName())
+                        .arg(item.message));
+                return;
+            }
+
+            m_resultEditorPane->clearResult();
+
             m_statusLabel->setText(
-                QString("Showing result for: %1")
-                    .arg(QFileInfo(imagePath).fileName()));
+                QString("%1 — %2")
+                    .arg(QFileInfo(imagePath).fileName())
+                    .arg(item.message));
             return;
         }
 
         m_resultEditorPane->clearResult();
 
-        QString stateMessage = "Ready to analyze.";
-        if (row < items.size()) {
-            stateMessage = items.at(row).message;
-        }
-
         m_statusLabel->setText(
-            QString("%1 — %2")
-                .arg(QFileInfo(imagePath).fileName())
-                .arg(stateMessage));
+            QString("%1 — Ready to analyze.")
+                .arg(QFileInfo(imagePath).fileName()));
     }
 }
