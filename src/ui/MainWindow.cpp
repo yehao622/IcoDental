@@ -282,8 +282,12 @@ namespace icodental::ui {
             &m_viewModel,
             &MainViewModel::batchAnalysisItemUpdated,
             this,
-            [this](int) {
+            [this](int updatedRow) {
                 refreshBatchTable();
+
+                if (updatedRow == m_currentBatchRow) {
+                    reviewBatchRow(updatedRow);
+                }
         });
 
         connect(
@@ -316,6 +320,7 @@ namespace icodental::ui {
             &QTableWidget::cellClicked,
             this,
             [this](int row, int) {
+                m_currentBatchRow = row;
                 reviewBatchRow(row);
             }
         );
@@ -375,6 +380,7 @@ namespace icodental::ui {
         }
 
         m_batchImagePaths = imagePaths;
+        m_currentBatchRow = -1;
 
         m_batchTable->setVisible(true);
         m_batchTable->setRowCount(imagePaths.size());
@@ -430,17 +436,8 @@ namespace icodental::ui {
                 .arg(imagePaths.size()));
 
         m_batchTable->selectRow(0);
-
-        if (!m_imagePreviewPane->loadImage(m_batchImagePaths.first())) {
-            QMessageBox::warning(
-                this,
-                "Unable to open image",
-                QString("Could not load: %1")
-                    .arg(m_batchImagePaths.first()));
-        } else {
-            m_selectedImagePath = m_batchImagePaths.first();
-            m_resultEditorPane->clearResult();
-        }
+        m_currentBatchRow = 0;
+        reviewBatchRow(m_currentBatchRow);
     }
 
     void MainWindow::startBatch() {
@@ -484,6 +481,7 @@ namespace icodental::ui {
         m_optionalPromptLineEdit->clear();
         m_forceRefreshCheckBox->setChecked(false);
         m_statusLabel->setText("Ready — select a prescription image.");
+        m_currentBatchRow = -1;
     }
 
     void MainWindow::showDemoResult() {
@@ -748,14 +746,9 @@ namespace icodental::ui {
 
             if (item.result.has_value()) {
                 m_resultEditorPane->displayResult(item.result.value());
-                m_statusLabel->setText(
-                    QString("%1 — %2")
-                        .arg(QFileInfo(imagePath).fileName())
-                        .arg(item.message));
-                return;
+            } else {
+                m_resultEditorPane->clearResult();
             }
-
-            m_resultEditorPane->clearResult();
 
             m_statusLabel->setText(
                 QString("%1 — %2")

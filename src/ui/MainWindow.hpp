@@ -60,6 +60,7 @@ namespace icodental::ui {
         QLineEdit* m_optionalPromptLineEdit{nullptr};
         QLabel* m_statusLabel{nullptr};
 
+        int m_currentBatchRow = -1;
         MainViewModel& m_viewModel;
         QString m_selectedImagePath;
     };
