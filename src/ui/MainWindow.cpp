@@ -282,8 +282,12 @@ namespace icodental::ui {
             &m_viewModel,
             &MainViewModel::batchAnalysisItemUpdated,
             this,
-            [this](int) {
+            [this](int updatedRow) {
                 refreshBatchTable();
+
+                if (updatedRow == m_currentBatchRow) {
+                    reviewBatchRow(updatedRow);
+                }
         });
 
         connect(
@@ -316,6 +320,7 @@ namespace icodental::ui {
             &QTableWidget::cellClicked,
             this,
             [this](int row, int) {
+                m_currentBatchRow = row;
                 reviewBatchRow(row);
             }
         );
@@ -375,6 +380,7 @@ namespace icodental::ui {
         }
 
         m_batchImagePaths = imagePaths;
+        m_currentBatchRow = -1;
 
         m_batchTable->setVisible(true);
         m_batchTable->setRowCount(imagePaths.size());
@@ -430,17 +436,8 @@ namespace icodental::ui {
                 .arg(imagePaths.size()));
 
         m_batchTable->selectRow(0);
-
-        if (!m_imagePreviewPane->loadImage(m_batchImagePaths.first())) {
-            QMessageBox::warning(
-                this,
-                "Unable to open image",
-                QString("Could not load: %1")
-                    .arg(m_batchImagePaths.first()));
-        } else {
-            m_selectedImagePath = m_batchImagePaths.first();
-            m_resultEditorPane->clearResult();
-        }
+        m_currentBatchRow = 0;
+        reviewBatchRow(m_currentBatchRow);
     }
 
     void MainWindow::startBatch() {
@@ -484,6 +481,7 @@ namespace icodental::ui {
         m_optionalPromptLineEdit->clear();
         m_forceRefreshCheckBox->setChecked(false);
         m_statusLabel->setText("Ready — select a prescription image.");
+        m_currentBatchRow = -1;
     }
 
     void MainWindow::showDemoResult() {
@@ -629,7 +627,6 @@ namespace icodental::ui {
         int cancelledCount)
     {
         setBatchControlsRunning(false);
-        m_batchImagePaths.clear();
         m_startBatchButton->setEnabled(false);
 
         const int totalCount =
@@ -644,6 +641,13 @@ namespace icodental::ui {
                 .arg(cancelledCount));
 
         refreshBatchTable();
+
+        m_statusLabel->setText(
+            QString("Batch finished: %1 succeeded, %2 failed, %3 cancelled. "
+                    "Select a row to review its image and result.")
+                .arg(succeededCount)
+                .arg(failedCount)
+                .arg(cancelledCount));
     }
 
     void MainWindow::removeSelectedBatchRows() {
@@ -737,24 +741,26 @@ namespace icodental::ui {
 
         const auto& items = m_viewModel.batchController().items();
 
-        if (row < items.size() && items.at(row).result.has_value()) {
-            m_resultEditorPane->displayResult(items.at(row).result.value());
+        if (row < items.size()) {
+            const BatchAnalysisItem& item = items.at(row);
+
+            if (item.result.has_value()) {
+                m_resultEditorPane->displayResult(item.result.value());
+            } else {
+                m_resultEditorPane->clearResult();
+            }
+
             m_statusLabel->setText(
-                QString("Showing result for: %1")
-                    .arg(QFileInfo(imagePath).fileName()));
+                QString("%1 — %2")
+                    .arg(QFileInfo(imagePath).fileName())
+                    .arg(item.message));
             return;
         }
 
         m_resultEditorPane->clearResult();
 
-        QString stateMessage = "Ready to analyze.";
-        if (row < items.size()) {
-            stateMessage = items.at(row).message;
-        }
-
         m_statusLabel->setText(
-            QString("%1 — %2")
-                .arg(QFileInfo(imagePath).fileName())
-                .arg(stateMessage));
+            QString("%1 — Ready to analyze.")
+                .arg(QFileInfo(imagePath).fileName()));
     }
 }
