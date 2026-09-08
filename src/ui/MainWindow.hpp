@@ -6,6 +6,9 @@
 #include <QProgressBar>
 #include <QTableWidget>
 #include <QStringList>
+#include <QHash>
+
+#include "domain/CaseAnalysisResult.hpp"
 
 class QCheckBox;
 class QComboBox;
@@ -38,6 +41,8 @@ namespace icodental::ui {
         void removeSelectedBatchRows();
         void updateBatchActionButtons();
         void reviewBatchRow(int row);
+        void addImagesToBatch(const QStringList& imagePaths, bool selectLastAddedImage);
+        void rebuildBatchTable();
 
         ImagePreviewPane* m_imagePreviewPane{nullptr};
         ResultEditorPane* m_resultEditorPane{nullptr};
@@ -63,5 +68,8 @@ namespace icodental::ui {
         int m_currentBatchRow = -1;
         MainViewModel& m_viewModel;
         QString m_selectedImagePath;
+
+        QHash<QString, icodental::domain::CaseAnalysisResult> m_singleImageResults;
+        QString batchImagePathForTableRow(int row) const;
     };
 }
