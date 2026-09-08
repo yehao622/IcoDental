@@ -16,6 +16,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QItemSelectionModel>
+#include <QSet>
 
 #include <algorithm>
 
@@ -229,6 +230,13 @@ namespace icodental::ui {
                 const icodental::domain::CaseAnalysisResult& result,
                 const QString& message) {
                 setAnalysisControlsEnabled(true);
+
+                if (!m_selectedImagePath.isEmpty()) {
+                    const QString key = QFileInfo(m_selectedImagePath).absoluteFilePath();
+
+                    m_singleImageResults.insert(key, result);
+                }
+
                 m_resultEditorPane->displayResult(result);
                 m_statusLabel->setText(message);
         });
@@ -283,10 +291,24 @@ namespace icodental::ui {
             &MainViewModel::batchAnalysisItemUpdated,
             this,
             [this](int updatedRow) {
+                const auto& items = m_viewModel.batchController().items();
+
+                if (updatedRow < 0 || updatedRow >= items.size()) {
+                    refreshBatchTable();
+                    return;
+                }
+
+                const QString updatedPath =
+                    QFileInfo(items.at(updatedRow).imagePath)
+                        .absoluteFilePath();
+
                 refreshBatchTable();
 
-                if (updatedRow == m_currentBatchRow) {
-                    reviewBatchRow(updatedRow);
+                const QString selectedPath = batchImagePathForTableRow(m_currentBatchRow);
+
+                if (!selectedPath.isEmpty()
+                    && selectedPath == updatedPath) {
+                    reviewBatchRow(m_currentBatchRow);
                 }
         });
 
@@ -354,18 +376,7 @@ namespace icodental::ui {
             return;
         }
 
-        if (!m_imagePreviewPane->loadImage(imagePath)) {
-            QMessageBox::warning(
-                this,
-                "Unable to open image",
-                "The selected file could not be loaded as an image.");
-            return;
-        }
-
-        m_selectedImagePath = imagePath;
-        m_resultEditorPane->clearResult();
-        m_statusLabel->setText(
-            QString("Loaded: %1").arg(QFileInfo(imagePath).fileName()));
+        addImagesToBatch({imagePath}, true);
     }
 
     void MainWindow::chooseImages() {
@@ -379,65 +390,7 @@ namespace icodental::ui {
             return;
         }
 
-        m_batchImagePaths = imagePaths;
-        m_currentBatchRow = -1;
-
-        m_batchTable->setVisible(true);
-        m_batchTable->setRowCount(imagePaths.size());
-
-        for (int row = 0; row < imagePaths.size(); ++row) {
-            const QString& imagePath = imagePaths.at(row);
-
-            m_batchTable->setItem(
-                row,
-                0,
-                new QTableWidgetItem(
-                    QFileInfo(imagePath).fileName()));
-
-            m_batchTable->setItem(
-                row,
-                1,
-                new QTableWidgetItem("Ready"));
-
-            m_batchTable->setItem(
-                row,
-                2,
-                new QTableWidgetItem(
-                    m_providerComboBox->currentText()));
-
-            m_batchTable->setItem(
-                row,
-                3,
-                new QTableWidgetItem(
-                    m_modelComboBox->currentText()));
-
-            m_batchTable->setItem(
-                row,
-                4,
-                new QTableWidgetItem(
-                    m_forceRefreshCheckBox->isChecked()
-                        ? "Will be reanalyzed."
-                        : "Will use cache when available."));
-        }
-
-        m_batchTable->resizeColumnsToContents();
-
-        m_batchProgressBar->setRange(0, imagePaths.size());
-        m_batchProgressBar->setValue(0);
-        m_batchProgressBar->setFormat(
-            QString("%1 image(s) ready to analyze.")
-                .arg(imagePaths.size()));
-
-        m_startBatchButton->setEnabled(true);
-        m_cancelBatchButton->setEnabled(false);
-
-        m_statusLabel->setText(
-            QString("%1 image(s) selected. Review settings, then start batch.")
-                .arg(imagePaths.size()));
-
-        m_batchTable->selectRow(0);
-        m_currentBatchRow = 0;
-        reviewBatchRow(m_currentBatchRow);
+        addImagesToBatch(imagePaths, true);
     }
 
     void MainWindow::startBatch() {
@@ -482,6 +435,19 @@ namespace icodental::ui {
         m_forceRefreshCheckBox->setChecked(false);
         m_statusLabel->setText("Ready — select a prescription image.");
         m_currentBatchRow = -1;
+        m_batchImagePaths.clear();
+
+        m_batchTable->clearContents();
+        m_batchTable->setRowCount(0);
+        m_batchTable->setVisible(false);
+
+        m_startBatchButton->setEnabled(false);
+        m_removeSelectedButton->setEnabled(false);
+
+        m_batchProgressBar->setRange(0, 1);
+        m_batchProgressBar->setValue(0);
+        m_batchProgressBar->setFormat("No images selected.");
+        m_singleImageResults.clear();
     }
 
     void MainWindow::showDemoResult() {
@@ -522,6 +488,7 @@ namespace icodental::ui {
         m_clearButton->setEnabled(enabled);
         m_analyzeButton->setEnabled(enabled);
         m_demoResultButton->setEnabled(enabled);
+        m_chooseImagesButton->setEnabled(enabled);
 
         m_providerComboBox->setEnabled(enabled);
         m_modelComboBox->setEnabled(enabled);
@@ -571,11 +538,11 @@ namespace icodental::ui {
         for (int row = 0; row < items.size(); ++row) {
             const BatchAnalysisItem& item = items.at(row);
 
-            m_batchTable->setItem(
-                row,
-                0,
-                new QTableWidgetItem(
-                    QFileInfo(item.imagePath).fileName()));
+            auto* fileItem = new QTableWidgetItem(QFileInfo(item.imagePath).fileName());
+            fileItem->setData(
+                Qt::UserRole,
+                QFileInfo(item.imagePath).absoluteFilePath());
+            m_batchTable->setItem(row, 0, fileItem);
 
             m_batchTable->setItem(
                 row,
@@ -722,12 +689,34 @@ namespace icodental::ui {
         m_startBatchButton->setEnabled(!batchRunning && hasBatchImages);
     }
 
-    void MainWindow::reviewBatchRow(int row) {
-        if (row < 0 || row >= m_batchImagePaths.size()) {
-            return;
+    QString MainWindow::batchImagePathForTableRow(int row) const {
+        if (row < 0 || row >= m_batchTable->rowCount()) {
+            return {};
         }
 
-        const QString& imagePath = m_batchImagePaths.at(row);
+        const QTableWidgetItem* fileItem =
+            m_batchTable->item(row, 0);
+
+        if (fileItem == nullptr) {
+            return {};
+        }
+
+        const QString storedPath =
+            fileItem->data(Qt::UserRole).toString();
+
+        if (!storedPath.isEmpty()) {
+            return QFileInfo(storedPath).absoluteFilePath();
+        }
+
+        return {};
+    }
+
+    void MainWindow::reviewBatchRow(int row) {
+        const QString imagePath = batchImagePathForTableRow(row);
+
+        if (imagePath.isEmpty()) {
+            return;
+        }
 
         if (!m_imagePreviewPane->loadImage(imagePath)) {
             QMessageBox::warning(
@@ -739,28 +728,150 @@ namespace icodental::ui {
 
         m_selectedImagePath = imagePath;
 
+        // Always clear first. This prevents a previous row's result
+        // from being shown for the newly selected image.
+        m_resultEditorPane->clearResult();
+
         const auto& items = m_viewModel.batchController().items();
 
-        if (row < items.size()) {
-            const BatchAnalysisItem& item = items.at(row);
+        const auto batchItem = std::find_if(
+            items.cbegin(),
+            items.cend(),
+            [&imagePath](const BatchAnalysisItem& item) {
+                return QFileInfo(item.imagePath).absoluteFilePath()
+                    == imagePath;
+            });
 
-            if (item.result.has_value()) {
-                m_resultEditorPane->displayResult(item.result.value());
-            } else {
-                m_resultEditorPane->clearResult();
+        if (batchItem != items.cend()) {
+            if (batchItem->result.has_value()) {
+                m_resultEditorPane->displayResult(
+                    batchItem->result.value());
             }
 
             m_statusLabel->setText(
                 QString("%1 — %2")
                     .arg(QFileInfo(imagePath).fileName())
-                    .arg(item.message));
+                    .arg(batchItem->message));
             return;
         }
 
-        m_resultEditorPane->clearResult();
+        const auto singleResult =
+            m_singleImageResults.constFind(imagePath);
+
+        if (singleResult != m_singleImageResults.cend()) {
+            m_resultEditorPane->displayResult(singleResult.value());
+
+            m_statusLabel->setText(
+                QString("%1 — Single-image analysis completed.")
+                    .arg(QFileInfo(imagePath).fileName()));
+            return;
+        }
 
         m_statusLabel->setText(
             QString("%1 — Ready to analyze.")
                 .arg(QFileInfo(imagePath).fileName()));
+    }
+
+    void MainWindow::addImagesToBatch(
+        const QStringList& imagePaths,
+        bool selectLastAddedImage) 
+    {
+        if (imagePaths.isEmpty()) {
+            return;
+        }
+
+        QSet<QString> knownPaths;
+        for (const QString& existingPath : m_batchImagePaths) {
+            knownPaths.insert(QFileInfo(existingPath).absoluteFilePath());
+        }
+
+        int selectedRow = -1;
+        int addedCount = 0;
+
+        for (const QString& imagePath : imagePaths) {
+            const QString absolutePath =
+                QFileInfo(imagePath).absoluteFilePath();
+
+            if (knownPaths.contains(absolutePath)) {
+                continue;
+            }
+
+            knownPaths.insert(absolutePath);
+            m_batchImagePaths.append(absolutePath);
+
+            selectedRow = m_batchImagePaths.size() - 1;
+            ++addedCount;
+        }
+
+        if (addedCount == 0) {
+            m_statusLabel->setText(
+                "No new images were added; selected images are already in the batch.");
+            return;
+        }
+
+        rebuildBatchTable();
+
+        m_batchTable->setVisible(true);
+
+        m_batchProgressBar->setRange(0, m_batchImagePaths.size());
+        m_batchProgressBar->setValue(0);
+        m_batchProgressBar->setFormat(
+            QString("%1 image(s) ready to analyze.")
+                .arg(m_batchImagePaths.size()));
+
+        m_startBatchButton->setEnabled(true);
+        m_cancelBatchButton->setEnabled(false);
+
+        if (selectLastAddedImage && selectedRow >= 0) {
+            m_currentBatchRow = selectedRow;
+            m_batchTable->selectRow(selectedRow);
+            reviewBatchRow(selectedRow);
+        }
+
+        m_statusLabel->setText(
+            QString("%1 new image(s) added; %2 image(s) ready to analyze.")
+                .arg(addedCount)
+                .arg(m_batchImagePaths.size()));
+    }
+
+    void MainWindow::rebuildBatchTable() {
+        m_batchTable->setRowCount(m_batchImagePaths.size());
+
+        for (int row = 0; row < m_batchImagePaths.size(); ++row) {
+            const QString& imagePath = m_batchImagePaths.at(row);
+
+            auto* fileItem = new QTableWidgetItem(QFileInfo(imagePath).fileName());
+            fileItem->setData(
+                Qt::UserRole,
+                QFileInfo(imagePath).absoluteFilePath());
+            m_batchTable->setItem(row, 0, fileItem);
+
+            m_batchTable->setItem(
+                row,
+                1,
+                new QTableWidgetItem("Ready"));
+
+            m_batchTable->setItem(
+                row,
+                2,
+                new QTableWidgetItem(
+                    m_providerComboBox->currentText()));
+
+            m_batchTable->setItem(
+                row,
+                3,
+                new QTableWidgetItem(
+                    m_modelComboBox->currentText()));
+
+            m_batchTable->setItem(
+                row,
+                4,
+                new QTableWidgetItem(
+                    m_forceRefreshCheckBox->isChecked()
+                        ? "Will be reanalyzed."
+                        : "Will use cache when available."));
+        }
+
+        m_batchTable->resizeColumnsToContents();
     }
 }
