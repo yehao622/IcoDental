@@ -1,6 +1,25 @@
 #include "ui/viewmodels/BatchAnalysisController.hpp"
 
 #include <utility>
+#include <QFileInfo>
+
+namespace {
+    QString providerDisplayName(
+        icodental::domain::ProviderType provider) {
+        switch (provider) {
+            case icodental::domain::ProviderType::Gemini:
+                return QStringLiteral("Gemini");
+
+            case icodental::domain::ProviderType::Ollama:
+                return QStringLiteral("local Ollama");
+
+            case icodental::domain::ProviderType::Unknown:
+                return QStringLiteral("provider");
+        }
+
+        return QStringLiteral("provider");
+    }
+} 
 
 namespace icodental::ui {
     BatchAnalysisController::BatchAnalysisController(QObject* parent)
@@ -39,6 +58,18 @@ namespace icodental::ui {
         m_cancelRequested = false;
         m_running = true;
 
+        for (int index = 0; index < m_items.size(); ++index) {
+            BatchAnalysisItem& item = m_items[index];
+
+            if (item.state == BatchItemState::Cached) {
+                item.message = "Loaded from local cache.";
+            } else if (item.state == BatchItemState::Pending) {
+                item.message = "Queued for analysis.";
+            }
+
+            emit itemUpdated(index);
+        }
+
         emit batchStarted(totalCount());
         emit progressChanged(completedCount(), totalCount());
 
@@ -46,11 +77,25 @@ namespace icodental::ui {
     }
 
     void BatchAnalysisController::cancel() {
-        if (!m_running) {
+        if (!m_running || m_cancelRequested) {
             return;
         }
 
         m_cancelRequested = true;
+
+        if (m_currentItemIndex >= 0
+            && m_currentItemIndex < m_items.size()) {
+            BatchAnalysisItem& currentItem =
+                m_items[m_currentItemIndex];
+
+            if (currentItem.state == BatchItemState::Running) {
+                currentItem.message =
+                    "Cancellation requested; waiting for current "
+                    "analysis to finish.";
+
+                emit itemUpdated(m_currentItemIndex);
+            }
+        }
     }
 
     const QList<BatchAnalysisItem>& BatchAnalysisController::items() const {
@@ -131,7 +176,8 @@ namespace icodental::ui {
 
         BatchAnalysisItem& nextItem = m_items[nextIndex];
         nextItem.state = BatchItemState::Running;
-        nextItem.message = "Analyzing…";
+
+        nextItem.message = QString("Waiting for %1 response…").arg(providerDisplayName(nextItem.provider));
 
         emit itemUpdated(nextIndex);
 

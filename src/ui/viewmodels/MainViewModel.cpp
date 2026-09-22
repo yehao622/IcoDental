@@ -395,7 +395,7 @@ namespace icodental::ui {
                     provider,
                     model,
                     BatchItemState::Cached,
-                    "Loaded from cache.",
+                    "Loaded from local cache.",
                     entry.caseAnalysisResult()
                 });
             } else {

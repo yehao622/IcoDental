@@ -282,7 +282,10 @@ namespace icodental::ui {
                 m_batchProgressBar->setRange(0, totalCount);
                 m_batchProgressBar->setValue(0);
                 m_batchProgressBar->setFormat(
-                    QString("Analyzing 0 of %1").arg(totalCount));
+                    QString("Preparing %1 image(s) for analysis…").arg(totalCount));
+                m_statusLabel->setText(
+                    QString("Preparing %1 image(s) for analysis…").arg(totalCount));
+
                 refreshBatchTable();
         });
 
@@ -296,6 +299,12 @@ namespace icodental::ui {
                 if (updatedRow < 0 || updatedRow >= items.size()) {
                     refreshBatchTable();
                     return;
+                } else {
+                    const BatchAnalysisItem& item =
+                    items.at(updatedRow);
+
+                    m_statusLabel->setText(
+                        QString("%1 — %2").arg(QFileInfo(item.imagePath).fileName()).arg(item.message));
                 }
 
                 const QString updatedPath =
@@ -303,6 +312,10 @@ namespace icodental::ui {
                         .absoluteFilePath();
 
                 refreshBatchTable();
+
+                if (updatedRow == m_currentBatchRow) {
+                    reviewBatchRow(updatedRow);
+                }
 
                 const QString selectedPath = batchImagePathForTableRow(m_currentBatchRow);
 
@@ -576,6 +589,26 @@ namespace icodental::ui {
     {
         m_batchProgressBar->setRange(0, totalCount);
         m_batchProgressBar->setValue(completedCount);
+
+        const auto& items =
+            m_viewModel.batchController().items();
+
+        const auto runningItem = std::find_if(
+            items.cbegin(),
+            items.cend(),
+            [](const BatchAnalysisItem& item) {
+                return item.state == BatchItemState::Running;
+            });
+
+        if (runningItem != items.cend()) {
+            m_batchProgressBar->setFormat(
+                QString("Processing %1 of %2: %3")
+                    .arg(completedCount + 1)
+                    .arg(totalCount)
+                    .arg(QFileInfo(runningItem->imagePath).fileName()));
+            return;
+        }
+
         m_batchProgressBar->setFormat(
             QString("Analyzing %1 of %2")
                 .arg(completedCount)
