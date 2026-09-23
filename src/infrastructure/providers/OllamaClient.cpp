@@ -12,6 +12,10 @@
 #include "infrastructure/providers/QtNetworkExecutor.hpp"
 #include "infrastructure/providers/CaseAnalysisResultParser.hpp"
 
+namespace {
+    constexpr int kOllamaRequestTimeoutMilliseconds = 180000;
+}
+
 namespace icodental::infrastructure::providers {
     OllamaClient::OllamaClient(QString baseUrl, QString model)
         : m_baseUrl(std::move(baseUrl))
@@ -83,7 +87,7 @@ namespace icodental::infrastructure::providers {
 
         // qInfo() << "Ollama final endpoint:" << buildEndpoint().toString();
         const NetworkResult result =
-            m_networkExecutor->postJson(endpoint, payload);
+            m_networkExecutor->postJson(endpoint, payload, kOllamaRequestTimeoutMilliseconds);
 
         if (!result.success) {
             return ProviderResponse(

@@ -49,7 +49,7 @@ namespace icodental::infrastructure::providers {
         GeminiPayloadBuilder payloadBuilder;
         const QJsonObject payload = payloadBuilder.build(request, imageBytes);
 
-        const NetworkResult result = m_networkExecutor->postJson(QUrl(buildEndpoint(request.model())), payload);
+        const NetworkResult result = m_networkExecutor->postJson(QUrl(buildEndpoint(request.model())), payload, -1);
 
         if (!result.success) {
             return ProviderResponse(false, QString(), QString::fromUtf8(result.responseBody), result.errorMessage);

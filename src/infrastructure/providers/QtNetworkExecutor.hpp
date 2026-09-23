@@ -13,7 +13,8 @@ namespace icodental::infrastructure::providers {
 
             [[nodiscard]] NetworkResult postJson(
                 const QUrl& url,
-                const QJsonObject& payload) override;
+                const QJsonObject& payload,
+                int timeoutMilliseconds = -1) override;
 
         private:
             QNetworkAccessManager* m_networkAccessManager{nullptr};
