@@ -18,6 +18,7 @@ namespace icodental::infrastructure::providers {
 
 		    [[nodiscard]] virtual NetworkResult postJson(
 		        const QUrl& url,
-		        const QJsonObject& payload) = 0;
+		        const QJsonObject& payload,
+    			int timeoutMilliseconds = -1) = 0;
 	};
 }
